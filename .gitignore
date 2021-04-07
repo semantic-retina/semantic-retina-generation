@@ -1,0 +1,9 @@
+# IDE files.
+.idea/
+
+# Cache files.
+__pycache__/
+
+# Output files.
+results/
+runs/
