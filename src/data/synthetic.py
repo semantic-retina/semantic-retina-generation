@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Tuple, Dict
 
+import random
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms as T
@@ -12,9 +13,9 @@ from src.data.common import get_label_semantics
 class SyntheticDataset(Dataset):
     """Dataset that returns synthetic data."""
 
-    image_dir = "/vol/bitbucket/js6317/individual-project/SPADE/results/combined-od/test_latest/images/synthesized_image/"
-    label_dir = "/vol/bitbucket/js6317/individual-project/gan-experiment/results/test/acgan-256/label/"
-    inst_dir = "/vol/bitbucket/js6317/individual-project/gan-experiment/results/test/acgan-256/inst/"
+    image_dir = "/vol/bitbucket/js6317/individual-project/SPADE/results/combined-od-hd/test_latest/images/synthesized_image/"
+    label_dir = "/vol/bitbucket/js6317/individual-project/gan-experiment/results/test/acgan-512/label/"
+    inst_dir = "/vol/bitbucket/js6317/individual-project/gan-experiment/results/test/acgan-512/inst/"
 
     def __init__(
         self,
@@ -25,13 +26,21 @@ class SyntheticDataset(Dataset):
         return_label: bool = True,
         return_inst: bool = True,
         return_grade: bool = True,
+        n_samples: int = -1,
     ):
         self.image_path = Path(SyntheticDataset.image_dir)
         self.label_path = Path(SyntheticDataset.label_dir)
         self.inst_path = Path(SyntheticDataset.inst_dir)
         self.files = []
         self.grades = []
-        for f in self.label_path.glob("**/*"):
+
+        all_files = list(self.label_path.glob("**/*"))
+        if n_samples == -1:
+            subset_files = all_files
+        else:
+            subset_files = random.sample(all_files, n_samples)
+
+        for f in subset_files:
             self.files.append(f.name)
             self.grades.append(int(f.stem[5]))
 

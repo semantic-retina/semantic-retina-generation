@@ -58,7 +58,7 @@ def train_net(
     batch_size: int,
     lr: float,
     val_proportion: float,
-    use_synthetic: bool,
+    n_synthetic: int,
     log_interval: int,
     val_interval: int,
     img_size: int,
@@ -71,6 +71,7 @@ def train_net(
     real_dataset = CombinedDataset(
         image_transform=image_transform,
         label_transform=label_transform,
+        return_grade=False,
     )
 
     n_val = int(len(real_dataset) * val_proportion)
@@ -78,11 +79,12 @@ def train_net(
 
     train_dataset, val_dataset = random_split(real_dataset, [n_train, n_val])
 
-    if use_synthetic:
+    if n_synthetic > 0:
         synthetic_dataset = SyntheticDataset(
             image_transform=image_transform,
             label_transform=label_transform,
             return_grade=False,
+            n_samples=n_synthetic,
         )
         print(f"Synthetic size: {len(synthetic_dataset)}")
         train_dataset = ConcatDataset((train_dataset, synthetic_dataset))
@@ -108,10 +110,11 @@ def train_net(
 
     print(
         f"""
+        Name:            {name}
         Epochs:          {epochs}
         Training size:   {n_train}
         Validation size: {n_val}
-        Use synthetic:   {use_synthetic}
+        Synthetic size:   {n_synthetic}
         """
     )
 
@@ -144,10 +147,11 @@ def train_net(
 
             if iteration % val_interval == 0:
 
-                val_score = evaluate(model, val_loader, device)
-                writer.add_scalar("Loss/test", val_score, iteration)
+                if n_val != 0:
+                    val_score = evaluate(model, val_loader, device)
+                    writer.add_scalar("Loss/test", val_score, iteration)
 
-                print(bold(f"Validation cross entropy: {val_score}"))
+                    print(bold(f"Validation cross entropy: {val_score}"))
 
                 masks_pred = torch.argmax(masks_pred, dim=1, keepdim=True)
                 masks_true = masks_true.unsqueeze(1)
@@ -201,14 +205,19 @@ def get_args():
         "--validation",
         dest="val",
         type=float,
-        default=0.1,
+        default=0,
         help="Proportion of the data to use as validation",
     )
     parser.add_argument(
-        "--use_synthetic",
-        type=bool,
-        default=False,
+        "--n_synthetic",
+        type=int,
+        default=0,
         help="Whether or not to use synthetic data during training",
+    )
+    parser.add_argument(
+        "--img_size",
+        type=int,
+        default=256,
     )
 
     return parser.parse_args()
@@ -218,17 +227,20 @@ def main():
     opt = get_args()
     device = get_device()
 
-    log_interval = 5
+    log_interval = 200
     val_interval = 100
-    img_size = 256
-    seed = 42
+    img_size = opt.img_size
 
-    set_seed(seed)
-    checkpoint_path = Path("results/unet/checkpoints/")
+    output_path = Path("results/unet/")
+    checkpoint_path = output_path / "checkpoints"
     checkpoint_path.mkdir(parents=True, exist_ok=True)
 
     model = UNet(n_channels=3, n_classes=2, bilinear=True)
     model = model.to(device=device)
+
+    output_file = output_path / f"{opt.name}.txt"
+    with open(output_file, "w") as f:
+        print(opt, file=f)
 
     train_net(
         name=opt.name,
@@ -238,7 +250,7 @@ def main():
         lr=opt.learning_rate,
         device=device,
         val_proportion=opt.val,
-        use_synthetic=opt.use_synthetic,
+        n_synthetic=opt.n_synthetic,
         log_interval=log_interval,
         val_interval=val_interval,
         img_size=img_size,
