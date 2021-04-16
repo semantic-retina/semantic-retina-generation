@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms as T
 
 from src.data.combined import CombinedDataset
-from src.metrics.dice import dice_coefficient, accuracy
+from src.metrics.dice import compute_precision_recall_f1
 from src.models.unet import UNet
 from src.data.common import get_label_semantics
 from src.utils.device import get_device
@@ -28,7 +28,7 @@ def main():
     opt = parser.parse_args()
     model_path = Path(f"results/unet/checkpoints/{opt.name}.pth")
 
-    img_size = 256
+    img_size = 512
     batch_size = 1
     device = get_device()
 
@@ -51,8 +51,9 @@ def main():
         pin_memory=True,
     )
 
-    dice = 0
-    acc = 0
+    total_dice = 0
+    total_precision = 0
+    total_recall = 0
     n_val = 0
     for batch in val_loader:
         images, masks_true = batch["image"], batch["label"]
@@ -66,14 +67,21 @@ def main():
         with torch.no_grad():
             masks_pred = model(images)
         masks_pred = torch.argmax(masks_pred, dim=1)
-        dice += dice_coefficient(masks_pred, masks_true)
-        acc += accuracy(masks_pred, masks_true)
+        batch_precision, batch_recall, batch_f1 = compute_precision_recall_f1(
+            masks_pred, masks_true
+        )
 
-    dice /= n_val
-    acc /= n_val
+        total_dice += batch_f1
+        total_precision += batch_precision
+        total_recall += batch_recall
+
+    dice = total_dice / n_val
+    precision = total_precision / n_val
+    recall = total_recall / n_val
     print(opt.name)
     print(f"Dice: {dice}")
-    print(f"Accuracy: {acc}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
 
 
 if __name__ == "__main__":
