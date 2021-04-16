@@ -1,16 +1,15 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from PIL import Image
-from torch import nn
 import torch
+from torch import nn
 from torch.utils.data import DataLoader
-from torchvision import transforms as T
 
 from src.data.combined import CombinedDataset
+from src.data.common import get_label_semantics, LabelIndex, get_mask
 from src.metrics.dice import compute_precision_recall_f1
 from src.models.unet import UNet
-from src.data.common import get_label_semantics
+from src.models.unet.transforms import make_transforms
 from src.utils.device import get_device
 
 
@@ -24,19 +23,20 @@ def load_model(path: Path) -> nn.Module:
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument("--name", type=str, default="unet-real-fgadr")
+    parser.add_argument("name", type=str, default="unet-real-fgadr")
     opt = parser.parse_args()
+
     model_path = Path(f"results/unet/checkpoints/{opt.name}.pth")
 
     img_size = 512
     batch_size = 1
+
     device = get_device()
 
     model = load_model(model_path)
     model.to(device)
 
-    image_transform = T.Compose([T.Resize(img_size), T.ToTensor()])
-    label_transform = T.Compose([T.Resize(img_size, Image.NEAREST), T.ToTensor()])
+    image_transform, label_transform = make_transforms(img_size)
 
     dataset = CombinedDataset(
         image_transform=image_transform,
@@ -61,7 +61,7 @@ def main():
 
         n_val += 1
 
-        masks_true = get_label_semantics(masks_true)[:, 4, :, :]
+        masks_true = get_mask(LabelIndex.EX, masks_true)
         masks_true = masks_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
