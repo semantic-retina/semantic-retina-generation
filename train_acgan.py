@@ -8,8 +8,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-from src.data.combined import CombinedDataset
 from src.data.common import get_label_semantics
+from src.data.datasets.combined import CombinedDataset
 from src.losses.gan_loss import GANLoss
 from src.models.acgan import Discriminator
 from src.models.acgan.generator import Generator

@@ -8,9 +8,9 @@ from torch import Tensor, optim
 from torch.utils.data import ConcatDataset, DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
-from src.data.combined import CombinedDataset
 from src.data.common import LabelIndex, get_mask
-from src.data.synthetic import SyntheticDataset
+from src.data.datasets.combined import CombinedDataset
+from src.data.datasets.synthetic import SyntheticDataset
 from src.models.unet import UNet
 from src.models.unet.transforms import make_transforms
 from src.options.unet.train import get_args
