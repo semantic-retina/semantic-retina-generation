@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from PIL import Image
-import torchvision.transforms.functional as F
 import torch
+import torchvision.transforms.functional as F
+from PIL import Image
 from torchvision.utils import save_image
 
 

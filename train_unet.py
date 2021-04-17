@@ -4,8 +4,8 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import optim, Tensor
-from torch.utils.data import DataLoader, random_split, ConcatDataset
+from torch import Tensor, optim
+from torch.utils.data import ConcatDataset, DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
 from src.data.combined import CombinedDataset

@@ -6,7 +6,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from src.data.combined import CombinedDataset
-from src.data.common import get_label_semantics, LabelIndex, get_mask
+from src.data.common import LabelIndex, get_label_semantics, get_mask
 from src.metrics.dice import compute_precision_recall_f1
 from src.models.unet import UNet
 from src.models.unet.transforms import make_transforms

@@ -1,8 +1,8 @@
 from typing import Tuple
 
 import torch
-from torch import Tensor
 from sklearn.metrics import accuracy_score
+from torch import Tensor
 
 
 def compute_accuracy(input: Tensor, target: Tensor) -> float:

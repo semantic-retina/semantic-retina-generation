@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Dict
-from torchvision import transforms as T
 
+import pandas as pd
 from PIL import Image
 from torch.utils.data import Dataset
-import pandas as pd
+from torchvision import transforms as T
 
 
 class CombinedDataset(Dataset):

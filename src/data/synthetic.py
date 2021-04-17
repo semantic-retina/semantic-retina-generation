@@ -1,9 +1,9 @@
-from pathlib import Path
-from typing import Tuple, Dict
-
 import random
+from pathlib import Path
+from typing import Dict, Tuple
+
 from PIL import Image
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 from torchvision.utils import save_image
 
