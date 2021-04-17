@@ -4,6 +4,7 @@ from PIL import Image
 from torchvision import transforms as T
 
 
+# Note that the testing and training transformations are the same for the U-Net model.
 def make_transforms(img_size: int) -> Tuple[T.Compose, T.Compose]:
     image_transform = T.Compose([T.Resize(img_size), T.ToTensor()])
     label_transform = T.Compose([T.Resize(img_size, Image.NEAREST), T.ToTensor()])
