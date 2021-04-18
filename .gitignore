@@ -4,6 +4,7 @@
 # Cache files.
 __pycache__/
 
-# Output files.
+# Generated directories.
 results/
 runs/
+data/
