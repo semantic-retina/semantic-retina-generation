@@ -7,7 +7,7 @@ from src.transforms.probabilistic_transform import ProbabilisticTransform
 
 
 class GaussianNoise(ProbabilisticTransform):
-    def __init__(self, p, mean, std):
+    def __init__(self, p: float, mean: float, std: float):
         assert 0.0 <= p <= 1.0
         self.mean = mean
         self.std = std

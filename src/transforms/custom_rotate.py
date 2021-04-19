@@ -1,6 +1,7 @@
 import random
 
 import torchvision.transforms.functional as TF
+from torch import Tensor
 
 from src.transforms.probabilistic_transform import ProbabilisticTransform
 
@@ -15,10 +16,10 @@ class Rotate(ProbabilisticTransform):
     def update_p(self, p: float):
         self.p = p
 
-    def __call__(self, x):
+    def __call__(self, x: Tensor) -> Tensor:
         if random.random() > self.p:
             return x
 
-        num_rotations = random.randrange(0, 3)
+        num_rotations = random.randrange(0, 3 + 1)
         x = TF.rotate(x, 90 * num_rotations, fill=0)
         return x

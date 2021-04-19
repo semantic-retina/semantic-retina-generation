@@ -74,7 +74,7 @@ def train(
         [
             custom_rotate.Rotate(d_transform_p),
             custom_affine.Affine(d_transform_p),
-            custom_noise.GaussianNoise(d_transform_p, 0.5, 1.0),
+            custom_noise.GaussianNoise(d_transform_p, 0.5, 0.1),
         ]
     )
 

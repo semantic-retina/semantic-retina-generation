@@ -14,31 +14,24 @@ class Generator(nn.Module):
         )
 
         self.conv_blocks = nn.Sequential(
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(256, 128, 3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 64, 3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(64, 32, 3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 16, 3, stride=1, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True),
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(16, 8, 3, stride=1, padding=1),
-            nn.BatchNorm2d(8),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(8, channels, 3, stride=1, padding=1),
-            nn.BatchNorm2d(channels),
-            nn.ReLU(inplace=True),
+            *self.generator_block(256, 128, 64),
+            *self.generator_block(64, 32, 16),
+            *self.generator_block(16, 8, channels),
             nn.Conv2d(channels, channels, 3, stride=1, padding=1),
         )
 
         self.activation = nn.Softmax(dim=1)
+
+    def generator_block(self, in_channels, mid_channels, out_channels):
+        return [
+            nn.Upsample(scale_factor=2),
+            nn.Conv2d(in_channels, mid_channels, 3, stride=1, padding=1),
+            nn.BatchNorm2d(mid_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(mid_channels, out_channels, 3, stride=1, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+        ]
 
     def forward(self, noise, labels):
         gen_input = torch.mul(self.label_emb(labels), noise)
