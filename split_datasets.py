@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from torch import nn
 from torchvision import models
 
-from src.data.transform import CropShortEdge
+from src.transforms.crop import CropShortEdge
 
 
 def load_model(path: Path) -> nn.Module:
@@ -129,10 +129,10 @@ def make_absolute_paths(
 def main():
     fgadr_original_dir = "/vol/vipdata/data/retina/FGADR-Seg/Seg-set/"
     fgadr_processed_dir = (
-        "/vol/bitbucket/js6317/individual-project/SPADE/datasets/fgadr/"
+        "/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/fgadr/"
     )
     idrid_processed_dir = (
-        "/vol/bitbucket/js6317/individual-project/SPADE/datasets/idrid/"
+        "/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/idrid/"
     )
 
     train_size = 0.8

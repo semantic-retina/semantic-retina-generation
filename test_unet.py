@@ -5,7 +5,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from src.data.common import LabelIndex, get_mask
+from src.data.common import Labels, get_mask
 from src.data.datasets.combined import CombinedDataset
 from src.metrics.dice import compute_precision_recall_f1
 from src.models.unet import UNet
@@ -61,7 +61,7 @@ def main():
 
         n_val += 1
 
-        masks_true = get_mask(LabelIndex.EX, masks_true)
+        masks_true = get_mask(Labels.EX, masks_true)
         masks_true = masks_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():

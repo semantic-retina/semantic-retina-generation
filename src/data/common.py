@@ -1,10 +1,11 @@
 from enum import Enum
+from typing import List
 
 import torch
 from torch import Tensor
 
 
-class LabelIndex(Enum):
+class Labels(Enum):
     RETINA = 0
     OD = 1
     MA = 2
@@ -31,6 +32,14 @@ def get_label_semantics(label: Tensor) -> Tensor:
     return label_map
 
 
-def get_mask(index: LabelIndex, labels: Tensor):
+def get_mask(index: Labels, labels: Tensor):
     semantics = get_label_semantics(labels)
     return semantics[:, index.value, :, :]
+
+def get_labels(indices: List[Labels], labels: Tensor):
+    semantics = get_label_semantics(labels)
+    channels = semantics[:, [i.value for i in indices], :, :]
+    max_vals, _ = torch.max(channels, dim=1, keepdim=True)
+    bg = torch.ones_like(max_vals) - max_vals
+    channels = torch.cat([bg, channels], dim=1)
+    return channels

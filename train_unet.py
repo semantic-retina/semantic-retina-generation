@@ -8,7 +8,7 @@ from torch import Tensor, optim
 from torch.utils.data import ConcatDataset, DataLoader, random_split
 from torch.utils.tensorboard import SummaryWriter
 
-from src.data.common import LabelIndex, get_mask
+from src.data.common import Labels, get_mask
 from src.data.datasets.combined import CombinedDataset
 from src.data.datasets.synthetic import SyntheticDataset
 from src.models.unet import UNet
@@ -29,7 +29,7 @@ def evaluate(model: nn.Module, loader: DataLoader, device: torch.device):
 
         n_val += 1
 
-        masks_true = get_mask(LabelIndex.EX, masks_true)
+        masks_true = get_mask(Labels.EX, masks_true)
         masks_true = masks_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
@@ -73,7 +73,7 @@ def train(
             masks_true = batch["label"]
 
             images = images.to(device=device, dtype=torch.float32)
-            masks_true = get_mask(LabelIndex.EX, masks_true)
+            masks_true = get_mask(Labels.EX, masks_true)
             masks_true = masks_true.to(device=device, dtype=torch.long)
 
             masks_pred = model(images)
