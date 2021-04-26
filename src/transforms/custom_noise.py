@@ -7,10 +7,10 @@ from src.transforms.probabilistic_transform import ProbabilisticTransform
 
 
 class GaussianNoise(ProbabilisticTransform):
-    def __init__(self, p: float, mean: float, std: float):
+    def __init__(self, p: float, mean: float, max_std: float):
         assert 0.0 <= p <= 1.0
         self.mean = mean
-        self.std = std
+        self.max_std = max_std
         self.p = p
 
     def update_p(self, p: float):
@@ -20,5 +20,7 @@ class GaussianNoise(ProbabilisticTransform):
         if random.random() > self.p:
             return x
 
-        noise = self.mean + torch.randn(x.size()).cuda() * self.std
+        std = self.p * self.max_std
+
+        noise = self.mean + torch.randn(x.size()).cuda() * std
         return x + noise

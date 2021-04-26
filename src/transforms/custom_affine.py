@@ -6,18 +6,22 @@ from torch.utils.data import DataLoader, RandomSampler
 from torchvision import transforms
 from torchvision.utils import save_image
 
+from src.data.common import get_label_semantics
 from src.data.datasets.combined import CombinedDataset
 from src.transforms.probabilistic_transform import ProbabilisticTransform
+from src.utils.sample import colour_labels
 
 
 class Affine(ProbabilisticTransform):
-    def __init__(self, p: float):
+    def __init__(self, p: float, n_channels: int):
         assert 0.0 <= p <= 1.0
         self.p = p
-        translate = (0.25, 0.25)
+        translate = (0.5, 0.5)
         scale = (0.8, 1.2)
+        # Set the area outside the transform as background.
+        fill = [1] + [0 for _ in range(n_channels - 1)]
         self.transform = transforms.RandomAffine(
-            90, translate, scale, fill=1, fillcolor=None
+            90, translate, scale, fill=fill, fillcolor=None
         )
 
     def update_p(self, p: float):
@@ -32,7 +36,7 @@ class Affine(ProbabilisticTransform):
 
 
 def test():
-    transform = T.Compose([T.ToTensor(), Affine(0.5)])
+    transform = T.Compose([T.ToTensor(), T.Resize(128, T.InterpolationMode.NEAREST)])
     batch_size = 16
     n_batches = 2
     dataset = CombinedDataset(common_transform=transform)
@@ -41,9 +45,11 @@ def test():
     )
     dataloader = DataLoader(dataset, batch_size=batch_size, sampler=sampler)
     for i, batch in enumerate(dataloader):
-        images, labels = batch["image"], batch["label"]
-        save_image(images, f"custom_rotate_test_image_{i}.png")
-        save_image(labels, f"custom_rotate_test_label_{i}.png")
+        labels = batch["label"]
+        labels = get_label_semantics(labels)
+        coloured_labels = colour_labels(labels)
+        print(coloured_labels.shape)
+        save_image(coloured_labels, f"custom_rotate_test_label_{i}.png")
 
 
 if __name__ == "__main__":
