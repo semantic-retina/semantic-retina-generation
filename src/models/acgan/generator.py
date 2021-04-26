@@ -1,40 +1,46 @@
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 
 class Generator(nn.Module):
-    def __init__(self, channels, img_size, n_classes, latent_dim):
+    def __init__(
+        self, out_channels: int, img_size: int, n_classes: int, latent_dim: int
+    ):
         super(Generator, self).__init__()
 
         self.label_emb = nn.Embedding(n_classes, latent_dim)
 
-        self.init_size = img_size // 2 ** 3  # Initial size before upsampling
+        self.init_size = img_size // 2 ** 6  # Initial size before upsampling
         self.l1 = nn.Sequential(
             nn.Linear(latent_dim, 256 * self.init_size ** 2),
         )
 
         self.conv_blocks = nn.Sequential(
-            *self.generator_block(256, 128, 64),
-            *self.generator_block(64, 32, 16),
-            *self.generator_block(16, 8, channels),
-            nn.Conv2d(channels, channels, 3, stride=1, padding=1),
+            *self.generator_block(256, 128),
+            *self.generator_block(128, 64),
+            *self.generator_block(64, 32),
+            *self.generator_block(32, 16),
+            *self.generator_block(16, 8),
+            *self.generator_block(8, out_channels),
+            nn.Conv2d(out_channels, out_channels, 3, 1, 1),
         )
 
+        # Softmax is applied across the channels to obtain a semantic map.
         self.activation = nn.Softmax(dim=1)
 
-    def generator_block(self, in_channels, mid_channels, out_channels):
+    def generator_block(self, c_in: int, c_out: int):
         return [
             nn.Upsample(scale_factor=2),
-            nn.Conv2d(in_channels, mid_channels, 3, stride=1, padding=1),
-            nn.BatchNorm2d(mid_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(mid_channels, out_channels, 3, stride=1, padding=1),
-            nn.BatchNorm2d(out_channels),
+            # Output shape N.
+            nn.Conv2d(c_in, c_out, 3, 1, 1),
+            nn.BatchNorm2d(c_out),
             nn.ReLU(inplace=True),
         ]
 
-    def forward(self, noise, labels):
+    def forward(self, noise: Tensor, labels: Tensor):
         gen_input = torch.mul(self.label_emb(labels), noise)
+        # gen_input = noise
         out = self.l1(gen_input)
         out = out.view(out.shape[0], 256, self.init_size, self.init_size)
         img = self.conv_blocks(out)
