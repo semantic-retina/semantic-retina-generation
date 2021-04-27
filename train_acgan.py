@@ -1,5 +1,7 @@
+import json
 import time
 from pathlib import Path
+from typing import List
 
 import torch
 import torch.cuda
@@ -48,12 +50,14 @@ def train(
     label_smoothing: bool,
     latent_dim: int,
     n_classes: int,
-    n_channels: int,
     sample_interval: int,
     chkpt_interval: int,
     logger: ACGANLogger,
     log_step: int,
+    lesions: List[str],
 ):
+    n_channels = len(lesions) + 1
+
     checkpoint_path = output_path / "checkpoints"
     checkpoint_path.mkdir(exist_ok=True, parents=True)
 
@@ -74,7 +78,7 @@ def train(
             custom_rotate.Rotate(initial_ada_p),
             custom_affine.Affine(initial_ada_p, n_channels),
             custom_noise.GaussianNoise(initial_ada_p, 0.0, 2.0),
-        ]
+        ],
     )
 
     hinge_loss = HingeLoss()
@@ -85,6 +89,7 @@ def train(
     if label_smoothing:
         valid_val *= 0.9
 
+    which_labels = sorted([Labels[l] for l in lesions], key=lambda x: x.value)
     for epoch in range(n_epochs):
         d_acc = 0.0
         d_loss = 0.0
@@ -94,12 +99,11 @@ def train(
 
         for i, batch in enumerate(dataloader):
             imgs = batch["label"]
-            which_labels = [Labels.OD, Labels.HE, Labels.EX]
             imgs = get_labels(which_labels, imgs)
             labels = batch["grade"]
 
             # Track ada_r for this minibatch. Ensure that this is always a float,
-            # and not accidentally a Tensor by calling .item(). Otherwise, issues will
+            # and not accidentally a Tensor by calling `.item()`. Otherwise, issues will
             # arise from inadvertently storing intermediate results between epochs.
             ada_r = 0.0
 
@@ -207,11 +211,13 @@ def main():
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Save options.
-    with open(output_path / "opt.txt", "w") as f:
-        print(opt, file=f)
+    with open(output_path / "opt.json", "w") as f:
+        json.dump(vars(opt), f, indent=4)
 
-    generator = Generator(opt.n_channels, opt.img_size, opt.n_classes, opt.latent_dim)
-    discriminator = Discriminator(opt.n_channels, opt.img_size, opt.n_classes)
+    n_channels = len(opt.lesions) + 1
+
+    generator = Generator(n_channels, opt.img_size, opt.n_classes, opt.latent_dim)
+    discriminator = Discriminator(n_channels, opt.img_size, opt.n_classes)
 
     generator.to(device)
     discriminator.to(device)
@@ -255,11 +261,11 @@ def main():
         opt.label_smoothing,
         opt.latent_dim,
         opt.n_classes,
-        opt.n_channels,
         opt.sample_interval,
         opt.chkpt_interval,
         logger,
         opt.log_step,
+        opt.lesions,
     )
 
     logger.close()

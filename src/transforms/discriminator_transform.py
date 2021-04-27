@@ -36,4 +36,4 @@ class DiscriminatorTransform:
             self.p = 1
 
         for t in self.transforms:
-            t.update_p(ada_r)
+            t.update_p(self.p)

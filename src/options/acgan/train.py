@@ -1,11 +1,24 @@
 import argparse
+from typing import List
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("name", type=str)
-    parser.add_argument("--n_epochs", type=int, default=1000)
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument(
+        "name",
+        type=str,
+    )
+    parser.add_argument(
+        "--n_epochs",
+        type=int,
+        default=1000,
+        help="Number of epochs to train for",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=64,
+    )
     parser.add_argument(
         "--lr_g", type=float, default=0.0005, help="Generator learning rate"
     )
@@ -20,9 +33,6 @@ def get_args():
     )
     parser.add_argument("--n_classes", type=int, default=5, help="Number of classes")
     parser.add_argument("--img_size", type=int, default=256)
-    parser.add_argument(
-        "--n_channels", type=int, default=3, help="Number of output image channels"
-    )
     parser.add_argument(
         "--chkpt_interval",
         type=int,
@@ -52,6 +62,12 @@ def get_args():
         type=int,
         default=200,
         help="Interval between logging, in terms of batches",
+    )
+    parser.add_argument(
+        "--lesions",
+        type=str,
+        nargs="+",
+        default=["RETINA", "OD", "MA", "HE", "EX", "SE"],
     )
     parser.add_argument(
         "--label_smoothing",
