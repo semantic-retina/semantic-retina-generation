@@ -29,10 +29,13 @@ def get_args():
         "--output_dir", type=str, default="results/", help="Output directory"
     )
     parser.add_argument(
-        "--latent_dim", type=int, default=100, help="Dimensionality of the latent space"
+        "--latent_dim", type=int, default=128, help="Dimensionality of the latent space"
     )
-    parser.add_argument("--n_classes", type=int, default=5, help="Number of classes")
-    parser.add_argument("--img_size", type=int, default=256)
+    parser.add_argument(
+        "--img_size",
+        type=int,
+        default=256,
+    )
     parser.add_argument(
         "--chkpt_interval",
         type=int,
@@ -68,6 +71,7 @@ def get_args():
         type=str,
         nargs="+",
         default=["RETINA", "OD", "MA", "HE", "EX", "SE"],
+        help="Which lesions to generate, as specified by the `Labels` enum"
     )
     parser.add_argument(
         "--label_smoothing",

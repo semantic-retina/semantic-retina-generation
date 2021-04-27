@@ -204,6 +204,7 @@ def main():
     opt = get_args()
     print(opt)
     set_seed(213)
+    n_classes = 5
 
     device = get_device()
 
@@ -216,8 +217,8 @@ def main():
 
     n_channels = len(opt.lesions) + 1
 
-    generator = Generator(n_channels, opt.img_size, opt.n_classes, opt.latent_dim)
-    discriminator = Discriminator(n_channels, opt.img_size, opt.n_classes)
+    generator = Generator(n_channels, opt.img_size, n_classes, opt.latent_dim)
+    discriminator = Discriminator(n_channels, opt.img_size, n_classes)
 
     generator.to(device)
     discriminator.to(device)
@@ -260,7 +261,7 @@ def main():
         opt.clip_gradient,
         opt.label_smoothing,
         opt.latent_dim,
-        opt.n_classes,
+        n_classes,
         opt.sample_interval,
         opt.chkpt_interval,
         logger,
