@@ -1,14 +1,18 @@
-import random
+import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Tuple
 
-import cv2
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
+from torchvision.utils import save_image
 
+from src.data.common import Labels
 from src.models.acgan.generator import Generator
+from src.options.acgan.test import get_args
+from src.utils.sample import colour_labels
+from src.utils.seed import set_seed
 
 
 def load_generator(
@@ -21,118 +25,98 @@ def load_generator(
     return model
 
 
-def rearrange(imgs: Tensor) -> Tuple[Tensor, Tensor]:
-    # input: bg 0, od 1, ex 2
-    # (1, 512, 512)
+def split_channels(imgs: Tensor) -> Tuple[Tensor, Tensor]:
     label = imgs[:, :, :, :]
     inst = imgs[:, [1], :, :]
     return label, inst
 
 
 def main():
-    # name = "acgan-256"
-    name = "acgan-512"
-    path = Path("results") / "acgan-256" / "checkpoints"
-    out_path = Path("results") / "test" / name
-    label_out_path = Path("results") / "test" / name / "label"
-    inst_out_path = Path("results") / "test" / name / "inst"
+    opt = get_args()
+
+    path = Path("results") / "acgan" / opt.name
+    checkpoint_path = path / "checkpoints"
+
+    with open(path / "opt.json", "r") as f:
+        opt_train = json.load(f, object_hook=lambda d: SimpleNamespace(**d))
+
+    n_classes = 5
+    which_labels = sorted([Labels[l] for l in opt_train.lesions], key=lambda x: x.value)
+    n_channels = len(which_labels) + 1
+
+    out_path = Path("results") / "acgan" / opt.name / "test"
+    label_out_path = out_path / "label"
+    inst_out_path = out_path / "inst"
     label_out_path.mkdir(exist_ok=True, parents=True)
     inst_out_path.mkdir(exist_ok=True, parents=True)
-    latent_dim = 100
-    channels = 3
-    img_size = 256
-    n_classes = 5
-    n = 3000
-    batch_size = 128
-    seed = 42
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
+
+    set_seed(opt.seed)
 
     device = torch.device("cuda")
 
+    checkpoint_suffix = "final"
+    if opt.epoch:
+        checkpoint_suffix = opt.epoch
+
     generator = load_generator(
-        path / "generator_final.pth", channels, img_size, n_classes, latent_dim
+        checkpoint_path / f"generator_{checkpoint_suffix}.pth",
+        n_channels,
+        opt_train.img_size,
+        n_classes,
+        opt_train.latent_dim,
     )
     generator.to(device)
 
-    batch_sizes = [batch_size for _ in range(n // batch_size)]
-    last_batch = n % batch_size
+    batch_sizes = [opt.batch_size for _ in range(opt.n_samples // opt.batch_size)]
+    last_batch = opt.n_samples % opt.batch_size
     if last_batch > 0:
         batch_sizes += [last_batch]
 
     print(f"Batch sizes: {batch_sizes}")
 
     for i, bs in enumerate(batch_sizes):
-        z = torch.randn((bs, latent_dim), device=device)
+        z = torch.randn((bs, opt_train.latent_dim), device=device)
         # gen_label = torch.tensor([dr_grade], device=device)
-        gen_label = torch.randint(5, (bs,), device=device)
-
+        gen_label = torch.randint(n_classes, (bs,), device=device)
         outputs = generator(z, gen_label).detach()
 
-        upsample = True
-        if upsample:
+        if opt.upsample_factor > 1:
+            # Interestingly, transforms.Resize now gives a warning when not using the
+            # `InterpolationMode` enum, but the same is not true for
+            # `functional.interpolate`.
             outputs = F.interpolate(
-                # 128 to 512
                 outputs,
-                scale_factor=2,
+                scale_factor=opt.upsample_factor,
                 mode="bilinear",
                 align_corners=False,
             )
             outputs = torch.where(outputs > 0.5, 1.0, 0.0)
 
-        label, inst = rearrange(outputs)
-        # Hacky way to make EX correspond to 4.
-        # We have BG:0, OD: 1, EX: 2, we need EX to be 4, so insert some extra channels
-        # empty_channel = torch.zeros(label.shape[2], label.shape[3])
-        label = torch.argmax(label, dim=1).float()
-        fours = torch.ones_like(label) * 4
-        label = torch.where(torch.eq(label, 2), fours, label)
-        inst = inst.squeeze()
+        labels, inst = split_channels(outputs)
+
         inst = torch.ones_like(inst) - inst
         inst *= 255
 
-        scale = False
-        if scale:
-            label = (label * 255) / float(channels - 1)
-
-        mask_retina = True
-        if mask_retina:
-            height, width = label[0].shape
-            image = 255 * np.ones((height, width))
-            center = (height // 2, width // 2)
-            radius = height // 2 - 1
-            colour = 0
-            circle = cv2.circle(image, center, radius, colour, thickness=cv2.FILLED)
-            circle_tensor = torch.from_numpy(circle)
-            circle_tensor = circle_tensor.to(device)
-            label[:] += circle_tensor
-            threshold = 255 * torch.ones((height, width)).to(device)
-            label = torch.where(label.gt(255), threshold, label)
-
-        label = label.cpu().numpy()
-        inst = inst.cpu().numpy()
-        print(f"Label: {label.shape} {np.unique(label)}")
-        print(f"Instance: {inst.shape} {np.unique(inst)}")
+        # At this point, `labels` contains values in the range [0, 255]. Pytorch's
+        # `save_image` function expects values between [0, 1]. `colour_labels` does this
+        # scaling for us, otherwise we do it here.
+        if opt.colour:
+            labels = colour_labels(labels)
+        else:
+            labels /= 255.0
 
         for j in range(bs):
             total_idx = i * bs + j
             dr_grade = gen_label[j].item()
             # Save as PNG to avoid compression artifacts.
-            out_file = str(out_path / "label" / f"test_{dr_grade}_{total_idx:05}.png")
-            ok = cv2.imwrite(out_file, label[j])
-            if not ok:
-                print("Failed!")
+            filename = f"test_{dr_grade}_{total_idx:05}.png"
+            label_path = str(out_path / "label" / filename)
+            save_image(labels[j], label_path)
 
-            out_file = str(out_path / "inst" / f"test_{dr_grade}_{total_idx:05}.png")
-            ok = cv2.imwrite(out_file, inst[j])
-            if not ok:
-                print("Failed!")
+            inst_path = str(out_path / "inst" / filename)
+            save_image(inst[j], inst_path)
 
-        print(f"Generated images of shape {label.shape}")
+        print(f"Generated images of shape {labels.shape}")
 
 
 if __name__ == "__main__":

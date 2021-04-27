@@ -12,7 +12,7 @@ class Labels(Enum):
     HE = 3
     EX = 4
     SE = 5
-    BG = 255
+    BG = 6
 
 
 def get_label_semantics(label: Tensor) -> Tensor:
@@ -20,7 +20,8 @@ def get_label_semantics(label: Tensor) -> Tensor:
 
     bs, _, h, w = label.shape
 
-    # Retina: 0, OD: 1, MA: 2, HE: 3, EX: 4, SE: 5, BG: 255
+    # Pixel value to semantic label is as follows:
+    # { Retina: 0, OD: 1, MA: 2, HE: 3, EX: 4, SE: 5, BG: 255 }
     nc = 6 + 1
 
     label *= 255.0
@@ -28,6 +29,9 @@ def get_label_semantics(label: Tensor) -> Tensor:
     label = label.long()
     label_map = torch.FloatTensor(bs, nc, h, w).zero_()
     label_map = label_map.scatter_(1, label, 1.0)
+
+    # Now, channel index to semantic label is as follows:
+    # { Retina: 0, OD: 1, MA: 2, HE: 3, EX: 4, SE: 5, BG: 6 }
 
     return label_map
 
@@ -41,5 +45,5 @@ def get_labels(indices: List[Labels], labels: Tensor):
     channels = semantics[:, [i.value for i in indices], :, :]
     max_vals, _ = torch.max(channels, dim=1, keepdim=True)
     bg = torch.ones_like(max_vals) - max_vals
-    channels = torch.cat([bg, channels], dim=1)
+    channels = torch.cat([channels, bg], dim=1)
     return channels

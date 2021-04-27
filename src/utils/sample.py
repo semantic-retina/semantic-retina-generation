@@ -12,7 +12,7 @@ COLOUR_MAP = torch.tensor(
         [180, 211, 156],  # HE
         [248, 150, 30],  # EX
         [249, 65, 68],  # SE
-        [255, 255, 255],  # BG
+        [0, 0, 0],  # BG
     ],
     dtype=torch.long,
 )
@@ -22,12 +22,15 @@ def colour_labels(gen_imgs: Tensor) -> Tensor:
     """
     Turns semantic labels into human-discernible colours.
 
-    :param: Expects a tensor of shape B x C x H x W with values in range [0, NC] where
-    NC is the maximum number of labels.
+    :param: Expects a one-hot encoded tensor of shape B x C x H x W.
 
-    :returns: A tensor of shape B x 3 x H x W with values in range [0, 1].
+    :returns: A tensor of shape B x 3 x H x W with values in range [0, 1] representing
+    RGB values.
     """
-    assert gen_imgs.ndim == 4
+    assert (
+        gen_imgs.ndim == 4
+    ), f"Expected sample to have 4 dimensions, got {gen_imgs.ndim}"
+
     batch_size, channels, height, width = gen_imgs.shape
     gray_image = torch.argmax(gen_imgs, dim=1)
     coloured = torch.empty(batch_size, 3, height, width, dtype=torch.long)
