@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch import Tensor, nn
 from torchvision.utils import save_image
@@ -17,12 +18,15 @@ COLOUR_MAP = torch.tensor(
     dtype=torch.long,
 )
 
+# We need to flip the colours since OpenCV expects channels in BGR order.
+COLOUR_MAP_NUMPY = np.flip(COLOUR_MAP.numpy(), axis=1)
+
 
 def colour_labels(gen_imgs: Tensor) -> Tensor:
     """
     Turns semantic labels into human-discernible colours.
 
-    :param: Expects a one-hot encoded tensor of shape B x C x H x W.
+    :param gen_imgs: Expects a one-hot encoded tensor of shape B x C x H x W.
 
     :returns: A tensor of shape B x 3 x H x W with values in range [0, 1] representing
     RGB values.
@@ -42,6 +46,29 @@ def colour_labels(gen_imgs: Tensor) -> Tensor:
         coloured[:, 2, :, :][mask] = COLOUR_MAP[label, 2]
 
     return coloured.float() / 255.0
+
+
+def colour_labels_numpy(image: np.ndarray) -> np.ndarray:
+    """
+    Turns a Numpy array representing semantic labels into human-discernible colours.
+
+    :param image: Expects a Numpy array of shape H x W.
+
+    :returns: A Numpy array of shape H x W x C.
+    """
+    assert image.ndim == 2, f"Expected image ot have 2 dimensions, got {image.ndim}"
+
+    height, width = image.shape
+    coloured = np.empty((height, width, 3))
+
+    nc = 6 + 1
+    for label in range(nc):
+        mask = image == label
+        coloured[:, :, 0][mask] = COLOUR_MAP_NUMPY[label, 0]
+        coloured[:, :, 1][mask] = COLOUR_MAP_NUMPY[label, 1]
+        coloured[:, :, 2][mask] = COLOUR_MAP_NUMPY[label, 2]
+
+    return coloured
 
 
 def sample_gan(

@@ -9,6 +9,7 @@ from src.data.preprocess.common import (GRAY_CLASS, WHITE, create_mask,
                                         fill_contours, open_binary_mask,
                                         open_colour_image, overlay_label,
                                         write_image)
+from src.utils.sample import colour_labels_numpy
 
 
 def find_eye(image, thresh=4):
@@ -63,6 +64,7 @@ def process_image(
     label_output_path: Path,
     inst_output_path: Path,
     od_file_path: str,
+    colour: bool,
 ):
     retina_img = open_colour_image(retina_path / image_name)
     retina_mask, hull = find_eye(retina_img)
@@ -83,11 +85,20 @@ def process_image(
     overlay_label(label, ma_img, ma_label)
     overlay_label(label, se_img, se_label)
 
+    if colour:
+        label = colour_labels_numpy(label)
+
     write_image(label, label_output_path / image_name)
     write_image(inst, inst_output_path / image_name)
 
 
-def preprocess_fgadr(root_dir: str, output_dir: str, n_workers: int, od_file_path: str):
+def preprocess_fgadr(
+    root_dir: str,
+    output_dir: str,
+    n_workers: int,
+    od_file_path: str,
+    colour: bool,
+):
     root_path = Path(root_dir)
 
     output_path = Path(output_dir) / "fgadr"
@@ -128,6 +139,7 @@ def preprocess_fgadr(root_dir: str, output_dir: str, n_workers: int, od_file_pat
             label_output_path=label_output_path,
             inst_output_path=inst_output_path,
             od_file_path=od_file_path,
+            colour=colour,
         )
 
     print(f"Preprocessing FGADR with {n_workers} workers...")

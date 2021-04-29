@@ -8,6 +8,7 @@ from src.data.preprocess.common import (BLACK, GRAY_CLASS, WHITE,
                                         fill_contours, open_binary_mask,
                                         open_colour_image, overlay_label,
                                         write_image)
+from src.utils.sample import colour_labels_numpy
 
 
 def find_eye(image):
@@ -41,6 +42,7 @@ def process_image(
     label_output_path: Path,
     instance_output_path: Path,
     img_output_path: Path,
+    colour: bool,
 ):
     retina_img = open_colour_image(retina_path / image_name)
     contour = find_eye(retina_img)
@@ -108,12 +110,18 @@ def process_image(
     retina_img = cv2.resize(retina_img, (1280, 1280), interpolation=cv2.INTER_NEAREST)
 
     new_name = change_suffix(image_name, ".png")
+
+    if colour:
+        mask = colour_labels_numpy(mask)
+
     write_image(mask, label_output_path / new_name)
     write_image(inst_mask, instance_output_path / new_name)
     write_image(retina_img, img_output_path / new_name)
 
 
-def preprocess_idrid(root_dir: str, output_dir: str, n_workers: int, train: bool):
+def preprocess_idrid(
+    root_dir: str, output_dir: str, n_workers: int, train: bool, colour: bool
+):
     root_path = Path(root_dir)
 
     output_path = Path(output_dir) / "idrid"
@@ -165,6 +173,7 @@ def preprocess_idrid(root_dir: str, output_dir: str, n_workers: int, train: bool
             label_output_path=label_output_path,
             instance_output_path=inst_output_path,
             img_output_path=img_output_path,
+            colour=colour,
         )
 
     print(f"Preprocessing IDRiD ({train_test_path}) with {n_workers} workers...")
