@@ -1,5 +1,4 @@
 import argparse
-from typing import List
 
 
 def get_args():
@@ -20,16 +19,28 @@ def get_args():
         default=64,
     )
     parser.add_argument(
-        "--lr_g", type=float, default=0.0005, help="Generator learning rate"
+        "--lr_g",
+        type=float,
+        default=0.0005,
+        help="Generator learning rate",
     )
     parser.add_argument(
-        "--lr_d", type=float, default=0.0001, help="Discriminator learning rate"
+        "--lr_d",
+        type=float,
+        default=0.0001,
+        help="Discriminator learning rate",
     )
     parser.add_argument(
-        "--output_dir", type=str, default="results/", help="Output directory"
+        "--output_dir",
+        type=str,
+        default="results/",
+        help="Output directory",
     )
     parser.add_argument(
-        "--latent_dim", type=int, default=128, help="Dimensionality of the latent space"
+        "--latent_dim",
+        type=int,
+        default=128,
+        help="Dimensionality of the latent space",
     )
     parser.add_argument(
         "--img_size",
@@ -71,7 +82,7 @@ def get_args():
         type=str,
         nargs="+",
         default=["RETINA", "OD", "MA", "HE", "EX", "SE"],
-        help="Which lesions to generate, as specified by the `Labels` enum"
+        help="Which lesions to generate, as specified by the `Labels` enum",
     )
     parser.add_argument(
         "--label_smoothing",
@@ -95,7 +106,15 @@ def get_args():
         action="store_false",
         dest="clip_gradient",
     )
-    parser.add_argument("--tensorboard", action="store_true", dest="tensorboard")
-    parser.add_argument("--notensorboard", action="store_false", dest="tensorboard")
+    parser.add_argument(
+        "--tensorboard",
+        action="store_true",
+        dest="tensorboard",
+    )
+    parser.add_argument(
+        "--notensorboard",
+        action="store_false",
+        dest="tensorboard",
+    )
     parser.set_defaults(label_smoothing=True, clip_gradient=True, tensorboard=True)
     return parser.parse_args()

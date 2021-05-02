@@ -55,5 +55,6 @@ class ACGANLogger:
         )
 
     def close(self):
-        self.tensorboard.close()
+        if self.tensorboard is not None:
+            self.tensorboard.close()
         sys.stdout.flush()

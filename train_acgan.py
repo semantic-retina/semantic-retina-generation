@@ -56,8 +56,6 @@ def train(
     log_step: int,
     lesions: List[str],
 ):
-    n_channels = len(lesions) + 1
-
     checkpoint_path = output_path / "checkpoints"
     checkpoint_path.mkdir(exist_ok=True, parents=True)
 
@@ -76,9 +74,9 @@ def train(
         0.6,
         [
             custom_rotate.Rotate(initial_ada_p),
-            custom_affine.Affine(initial_ada_p, n_channels),
-            custom_noise.GaussianNoise(initial_ada_p, 0.0, 2.0),
+            custom_noise.GaussianNoise(initial_ada_p, 0.0, 1.0),
         ],
+        max_p=0.85,
     )
 
     hinge_loss = HingeLoss()
@@ -231,6 +229,7 @@ def main():
         [
             transforms.Resize(opt.img_size, InterpolationMode.NEAREST),
             transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
             transforms.ToTensor(),
         ],
     )
@@ -241,6 +240,7 @@ def main():
         dataset,
         batch_size=opt.batch_size,
         shuffle=True,
+        drop_last=True,
     )
 
     logger = ACGANLogger(opt.name, opt.n_epochs, opt.tensorboard)
