@@ -15,6 +15,7 @@ from sklearn.model_selection import train_test_split
 from torch import nn
 from torchvision import models
 
+from src.options.split import get_args
 from src.transforms.crop import CropShortEdge
 
 
@@ -60,6 +61,8 @@ def make_fgadr(
         fgadr_df, fgadr_image_path, fgadr_label_path, fgadr_inst_path
     )
 
+    fgadr_df["Source"] = "FGADR"
+
     return fgadr_df
 
 
@@ -96,6 +99,8 @@ def make_idrid(processed_dir: str, predict_grades: bool = False) -> pd.DataFrame
         noisy_grades = np.random.randint(0, 5)
     idrid_df["Grade"] = noisy_grades
 
+    idrid_df["Source"] = "IDRiD"
+
     return idrid_df
 
 
@@ -127,28 +132,26 @@ def make_absolute_paths(
 
 
 def main():
-    fgadr_original_dir = "/vol/vipdata/data/retina/FGADR-Seg/Seg-set/"
-    fgadr_processed_dir = (
-        "/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/fgadr/"
-    )
-    idrid_processed_dir = (
-        "/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/idrid/"
-    )
-
-    train_size = 0.8
-    seed = 10
-    predict_grades = False
+    opt = get_args()
 
     data_path = Path("data")
     data_path.mkdir(parents=True, exist_ok=True)
 
-    fgadr_df = make_fgadr(fgadr_original_dir, fgadr_processed_dir)
+    fgadr_df = make_fgadr(
+        opt.fgadr_original_dir,
+        opt.fgadr_processed_dir,
+        exclude_grader_1=opt.exclude_grader_1,
+    )
 
-    idrid_df = make_idrid(idrid_processed_dir, predict_grades=predict_grades)
+    idrid_df = make_idrid(opt.idrid_processed_dir, predict_grades=opt.predict_grades)
 
     combined_df = pd.concat((fgadr_df, idrid_df))
+
+    # Remove redundant "File" column.
+    combined_df = combined_df.drop("File", axis=1)
+
     combined_train, combined_test = train_test_split(
-        combined_df, train_size=train_size, random_state=seed
+        combined_df, train_size=opt.train_size, random_state=opt.seed
     )
 
     print(f"FGADR : {len(fgadr_df)}")
@@ -157,6 +160,7 @@ def main():
     print(f"Train: {len(combined_train)}")
     print(f"Test: {len(combined_test)}")
 
+    combined_df.to_csv(data_path / "all.csv")
     combined_train.to_csv(data_path / "train.csv")
     combined_test.to_csv(data_path / "test.csv")
 

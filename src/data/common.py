@@ -40,6 +40,7 @@ def get_mask(index: Labels, labels: Tensor):
     semantics = get_label_semantics(labels)
     return semantics[:, index.value, :, :]
 
+
 def get_labels(indices: List[Labels], labels: Tensor):
     semantics = get_label_semantics(labels)
     channels = semantics[:, [i.value for i in indices], :, :]

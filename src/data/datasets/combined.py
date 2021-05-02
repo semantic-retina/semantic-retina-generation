@@ -15,6 +15,10 @@ class CombinedDataset(Dataset):
 
     root_dir = "/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/"
 
+    TRAIN = "train"
+    TEST = "test"
+    ALL = "all"
+
     def __init__(
         self,
         image_transform: T.Compose = None,
@@ -24,16 +28,20 @@ class CombinedDataset(Dataset):
         return_label: bool = True,
         return_inst: bool = True,
         return_grade: bool = True,
-        train: bool = True,
+        mode: str = TRAIN,
     ):
         root_path = Path(CombinedDataset.root_dir)
 
-        if train:
+        if mode == CombinedDataset.TRAIN:
             csv_path = root_path / "train.csv"
-        else:
+        elif mode == CombinedDataset.TEST:
             csv_path = root_path / "test.csv"
+        elif mode == CombinedDataset.ALL:
+            csv_path = root_path / "all.csv"
+        else:
+            raise ValueError(f'Invalid mode "{mode}"')
 
-        self.df = pd.read_csv(csv_path)
+        self.df = pd.read_csv(csv_path, index_col=0)
 
         self.image_transform = image_transform
         self.label_transform = label_transform
