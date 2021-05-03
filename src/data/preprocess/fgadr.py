@@ -5,10 +5,16 @@ import cv2
 import numpy as np
 from tqdm.contrib.concurrent import thread_map
 
-from src.data.preprocess.common import (GRAY_CLASS, WHITE, create_mask,
-                                        fill_contours, open_binary_mask,
-                                        open_colour_image, overlay_label,
-                                        write_image)
+from src.data.preprocess.common import (
+    GRAY_CLASS,
+    WHITE,
+    create_mask,
+    fill_contours,
+    open_binary_mask,
+    open_colour_image,
+    overlay_label,
+    write_image,
+)
 from src.utils.sample import colour_labels_numpy
 
 

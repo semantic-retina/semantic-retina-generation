@@ -1,6 +1,7 @@
 from typing import Tuple
 
 from torchvision import transforms as T
+
 # Note that the testing and training transformations are the same for the U-Net model.
 from torchvision.transforms import InterpolationMode
 
