@@ -3,6 +3,7 @@ from typing import List
 
 import torch
 from torch import Tensor
+from torch.utils.data import DataLoader
 
 
 class Labels(Enum):
@@ -48,3 +49,9 @@ def get_labels(indices: List[Labels], labels: Tensor):
     bg = torch.ones_like(max_vals) - max_vals
     channels = torch.cat([channels, bg], dim=1)
     return channels
+
+
+def infinite(dataloader: DataLoader):
+    while True:
+        for batch in dataloader:
+            yield batch
