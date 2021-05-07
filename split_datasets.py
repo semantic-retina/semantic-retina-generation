@@ -96,8 +96,8 @@ def make_idrid(processed_dir: str, predict_grades: bool = False) -> pd.DataFrame
         model = load_model(model_path)
         noisy_grades = predict_idrid(model, idrid_df)
     else:
-        # Numpy's randint is has an exclusive end point.
-        noisy_grades = np.random.randint(0, 5)
+        # Numpy's randint has an exclusive end point.
+        noisy_grades = np.random.randint(0, 5, size=len(idrid_df))
     idrid_df["Grade"] = noisy_grades
 
     idrid_df["Source"] = "IDRiD"

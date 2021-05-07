@@ -52,15 +52,19 @@ def open_image(path: Path, flags: int) -> np.ndarray:
     return img
 
 
-def create_mask(rows, cols, hull):
-    # black image
-    mask = np.zeros((rows, cols), dtype=np.uint8)
-    # blit our contours onto it in white color
-    cv2.drawContours(mask, [hull], 0, 255, -1)
-    return mask
-
-
 # Contours are drawn on the original image.
 def fill_contours(image, contours, color):
     for i in range(0, len(contours)):
         cv2.drawContours(image, contours, i, color, cv2.FILLED)
+
+
+def find_eye(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # A threshold value of 10 appears to work well.
+    _, thresh = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
+
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+    return contours[0]

@@ -8,32 +8,14 @@ from tqdm.contrib.concurrent import thread_map
 from src.data.preprocess.common import (
     GRAY_CLASS,
     WHITE,
-    create_mask,
     fill_contours,
+    find_eye,
     open_binary_mask,
     open_colour_image,
     overlay_label,
     write_image,
 )
 from src.utils.sample import colour_labels_numpy
-
-
-def find_eye(image, thresh=4):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    edges = np.array([])
-    edges = cv2.Canny(gray, thresh, thresh * 3, edges)
-
-    # Find contours; second output is hierarchy - we are not interested in it.
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # Now let's get only what we need out of it.
-    hull_contours = cv2.convexHull(np.vstack(np.array(contours)))
-    hull = np.vstack(hull_contours)
-
-    mask = create_mask(*image.shape[0:2], hull)
-
-    return mask, hull
 
 
 def draw_od(label: np.ndarray, inst: np.ndarray, image_name: str, file_path: str):
@@ -73,7 +55,7 @@ def process_image(
     colour: bool,
 ):
     retina_img = open_colour_image(retina_path / image_name)
-    retina_mask, hull = find_eye(retina_img)
+    contour = find_eye(retina_img)
 
     ex_img = open_binary_mask(ex_path / image_name)
     he_img = open_binary_mask(he_path / image_name)
@@ -83,8 +65,7 @@ def process_image(
     label = np.ones((1280, 1280), dtype="uint8") * WHITE
     inst = np.ones((1280, 1280), dtype="uint8") * WHITE
 
-    fill_contours(label, [hull], GRAY_CLASS["BG"])
-
+    fill_contours(label, [contour], GRAY_CLASS["BG"])
     draw_od(label, inst, image_name, od_file_path)
     overlay_label(label, ex_img, ex_label)
     overlay_label(label, he_img, he_label)
