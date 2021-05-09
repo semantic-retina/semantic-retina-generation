@@ -39,7 +39,7 @@ def main():
     label_path.mkdir(parents=True, exist_ok=True)
 
     set_seed(opt.seed)
-    nc = 6 + 1
+    nc = 8 + 1
 
     transform = T.Compose(
         [

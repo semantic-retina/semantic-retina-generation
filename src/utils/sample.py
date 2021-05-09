@@ -13,6 +13,8 @@ COLOUR_MAP = torch.tensor(
         [180, 211, 156],  # HE
         [248, 150, 30],  # EX
         [249, 65, 68],  # SE
+        [250, 208, 44],  # NV
+        [164, 92, 64],  # IRMA
         [0, 0, 0],  # BG
     ],
     dtype=torch.long,
@@ -37,8 +39,8 @@ def colour_labels(gen_imgs: Tensor) -> Tensor:
 
     batch_size, channels, height, width = gen_imgs.shape
     gray_image = torch.argmax(gen_imgs, dim=1)
-    coloured = torch.empty(batch_size, 3, height, width, dtype=torch.long)
-    nc = 6 + 1
+    coloured = torch.zeros(batch_size, 3, height, width, dtype=torch.long)
+    nc = 8 + 1
     for label in range(nc):
         mask = gray_image == label
         coloured[:, 0, :, :][mask] = COLOUR_MAP[label, 0]
@@ -59,7 +61,7 @@ def colour_labels_numpy(image: np.ndarray) -> np.ndarray:
     assert image.ndim == 2, f"Expected image ot have 2 dimensions, got {image.ndim}"
 
     height, width = image.shape
-    coloured = np.empty((height, width, 3))
+    coloured = np.zeros((height, width, 3))
 
     nc = 6 + 1
     for label in range(nc):

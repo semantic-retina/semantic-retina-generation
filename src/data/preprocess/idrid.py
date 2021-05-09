@@ -52,20 +52,20 @@ def process_image(
 
     mask = np.ones((2848, 4288), dtype="uint8") * WHITE
 
-    fill_contours(mask, [contour], GRAY_CLASS["BG"])
+    fill_contours(mask, [contour], GRAY_CLASS["RETINA"])
     overlay_label(mask, od_img, od_label)
     overlay_label(mask, ex_img, ex_label)
     overlay_label(mask, he_img, he_label)
     overlay_label(mask, ma_img, ma_label)
     overlay_label(mask, se_img, se_label)
 
-    inst_mask = np.ones((2848, 4288), dtype="uint8") * WHITE
-    overlay_label(inst_mask, od_img, bg_label)
+    inst = np.ones((2848, 4288), dtype="uint8") * WHITE
+    overlay_label(inst, od_img, bg_label)
 
     # Find bounding box.
     x, y, w, h = cv2.boundingRect(contour)
     mask = mask[y : y + h, x : x + w]
-    inst_mask = inst_mask[y : y + h, x : x + w]
+    inst = inst[y : y + h, x : x + w]
     retina_img = retina_img[y : y + h, x : x + w]
 
     target = max(h, w)
@@ -82,8 +82,8 @@ def process_image(
         cv2.BORDER_CONSTANT,
         value=WHITE,
     )
-    inst_mask = cv2.copyMakeBorder(
-        inst_mask,
+    inst = cv2.copyMakeBorder(
+        inst,
         top_bottom,
         top_bottom,
         left_right,
@@ -103,7 +103,7 @@ def process_image(
 
     # Resize to 1280 x 1280.
     mask = cv2.resize(mask, (1280, 1280), interpolation=cv2.INTER_NEAREST)
-    inst_mask = cv2.resize(inst_mask, (1280, 1280), interpolation=cv2.INTER_NEAREST)
+    inst = cv2.resize(inst, (1280, 1280), interpolation=cv2.INTER_NEAREST)
     retina_img = cv2.resize(retina_img, (1280, 1280), interpolation=cv2.INTER_NEAREST)
 
     new_name = change_suffix(image_name, ".png")
@@ -112,7 +112,7 @@ def process_image(
         mask = colour_labels_numpy(mask)
 
     write_image(mask, label_output_path / new_name)
-    write_image(inst_mask, instance_output_path / new_name)
+    write_image(inst, instance_output_path / new_name)
     write_image(retina_img, img_output_path / new_name)
 
 
@@ -147,7 +147,7 @@ def preprocess_idrid(
     he_label = np.ones((2848, 4288), dtype="uint8") * GRAY_CLASS["HE"]
     ex_label = np.ones((2848, 4288), dtype="uint8") * GRAY_CLASS["EX"]
 
-    bg_label = np.ones((2848, 4288), dtype="uint8") * GRAY_CLASS["BG"]
+    bg_label = np.ones((2848, 4288), dtype="uint8") * GRAY_CLASS["RETINA"]
 
     image_names = [f.name for f in retina_path.glob("**/*")]
 

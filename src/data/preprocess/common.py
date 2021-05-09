@@ -8,12 +8,14 @@ WHITE = 255
 
 
 GRAY_CLASS = {
-    "BG": 0,
+    "RETINA": 0,
     "OD": 1,
     "MA": 2,
     "HE": 3,
     "EX": 4,
     "SE": 5,
+    "NV": 6,
+    "IRMA": 7,
 }
 
 
@@ -21,16 +23,11 @@ def open_binary_mask(path: Path) -> np.ndarray:
     try:
         return open_image(path, cv2.IMREAD_GRAYSCALE)
     except FileNotFoundError:
-        print(f"Could not open {path}, continuing...")
         return np.zeros((2848, 4288))
 
 
 def open_colour_image(path: Path) -> np.ndarray:
-    try:
-        return open_image(path, cv2.IMREAD_COLOR)
-    except FileNotFoundError:
-        print(f"Could not open {path}, continuing...")
-        return np.zeros((2848, 4288))
+    return open_image(path, cv2.IMREAD_COLOR)
 
 
 # Note: mask if modified in-place.

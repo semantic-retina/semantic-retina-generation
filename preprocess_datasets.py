@@ -16,6 +16,8 @@ The semantic labels are encoded as gray values with:
 - Hemorrhages (HE): 3
 - Hard exudates (EX): 4
 - Soft exudates (SE): 5
+- Neovascularization (NV): 6
+- Intraretinal microvascular abnormalities (IRMA): 7
 - Background: 255
 """
 
