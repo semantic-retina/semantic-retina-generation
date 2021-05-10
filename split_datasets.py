@@ -21,7 +21,7 @@ from src.transforms.crop import CropShortEdge
 
 def load_model(path: Path) -> nn.Module:
     """Loads the pre-trained ResNet model for predicting image grades."""
-    model = models.resnet18()
+    model = models.resnet50()
     fc_n_features = model.fc.in_features
     model.fc = nn.Linear(fc_n_features, 5)
     model.load_state_dict(torch.load(path))
@@ -92,7 +92,7 @@ def make_idrid(processed_dir: str, predict_grades: bool = False) -> pd.DataFrame
 
     # Predict labels.
     if predict_grades:
-        model_path = Path("results/resnet/resnet-baseline.pth")
+        model_path = Path("results/resnet/eyepacs/checkpoints/model_latest.pth")
         model = load_model(model_path)
         noisy_grades = predict_idrid(model, idrid_df)
     else:
