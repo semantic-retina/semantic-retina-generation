@@ -16,7 +16,19 @@ def get_args():
         help="Path to the FGADR dataset",
     )
     parser.add_argument(
-        "--annotation_file",
+        "--diaretdb1_root_dir",
+        type=str,
+        default="/vol/bitbucket/js6317/individual-project/data/diaretdb1_v_1_1/",
+        help="Path to the DIARETDB1 dataset",
+    )
+    parser.add_argument(
+        "--diaretdb1_annotation_file",
+        type=str,
+        default="data/diaretdb1_od.json",
+        help="JSON file containing annotations for the DIARETDB1 dataset",
+    )
+    parser.add_argument(
+        "--fgadr_annotation_file",
         type=str,
         default="data/total.json",
         help="JSON file containing annotations for the FGADR dataset",

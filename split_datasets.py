@@ -146,7 +146,11 @@ def main():
 
     idrid_df = make_idrid(opt.idrid_processed_dir, predict_grades=opt.predict_grades)
 
-    combined_df = pd.concat((fgadr_df, idrid_df))
+    diaretdb1_df = make_diaretdb1(
+        opt.diaretdb1_processed_dir, predict_grades=opt.predict_grades
+    )
+
+    combined_df = pd.concat((fgadr_df, idrid_df, diaretdb1_df))
 
     # Remove redundant "File" column.
     combined_df = combined_df.drop("File", axis=1)
@@ -157,6 +161,7 @@ def main():
 
     print(f"FGADR : {len(fgadr_df)}")
     print(f"IDRiD: {len(idrid_df)}")
+    print(f"DIARETDB1: {len(diaretdb1_df)}")
 
     print(f"Train: {len(combined_train)}")
     print(f"Test: {len(combined_test)}")

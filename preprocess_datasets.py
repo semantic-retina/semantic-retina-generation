@@ -20,7 +20,7 @@ The semantic labels are encoded as gray values with:
 - Intraretinal microvascular abnormalities (IRMA): 7
 - Background: 255
 """
-
+from src.data.preprocess.diaretdb import preprocess_diaretdb1
 from src.data.preprocess.fgadr import preprocess_fgadr
 from src.data.preprocess.idrid import preprocess_idrid
 from src.options.preprocess import get_args
@@ -46,7 +46,14 @@ def main():
         opt.fgadr_root_dir,
         opt.output_dir,
         opt.n_workers,
-        opt.annotation_file,
+        opt.fgadr_annotation_file,
+        opt.colour,
+    )
+    preprocess_diaretdb1(
+        opt.diaretdb1_root_dir,
+        opt.output_dir,
+        opt.n_workers,
+        opt.diaretdb1_annotation_file,
         opt.colour,
     )
 

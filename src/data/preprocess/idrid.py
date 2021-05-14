@@ -13,6 +13,7 @@ from src.data.preprocess.common import (
     open_binary_mask,
     open_colour_image,
     overlay_label,
+    pad_to_square,
     write_image,
 )
 from src.utils.sample import colour_labels_numpy
@@ -64,42 +65,16 @@ def process_image(
 
     # Find bounding box.
     x, y, w, h = cv2.boundingRect(contour)
+
+    # Crop around bounding box.
     mask = mask[y : y + h, x : x + w]
     inst = inst[y : y + h, x : x + w]
     retina_img = retina_img[y : y + h, x : x + w]
 
-    target = max(h, w)
-    top_bottom = (target - h) // 2
-    left_right = (target - w) // 2
-
     # Pad to square.
-    mask = cv2.copyMakeBorder(
-        mask,
-        top_bottom,
-        top_bottom,
-        left_right,
-        left_right,
-        cv2.BORDER_CONSTANT,
-        value=WHITE,
-    )
-    inst = cv2.copyMakeBorder(
-        inst,
-        top_bottom,
-        top_bottom,
-        left_right,
-        left_right,
-        cv2.BORDER_CONSTANT,
-        value=WHITE,
-    )
-    retina_img = cv2.copyMakeBorder(
-        retina_img,
-        top_bottom,
-        top_bottom,
-        left_right,
-        left_right,
-        cv2.BORDER_CONSTANT,
-        value=[BLACK, BLACK, BLACK],
-    )
+    mask = pad_to_square(mask, w, h, WHITE)
+    inst = pad_to_square(inst, w, h, WHITE)
+    retina_img = pad_to_square(retina_img, w, h, [BLACK, BLACK, BLACK])
 
     # Resize to 1280 x 1280.
     mask = cv2.resize(mask, (1280, 1280), interpolation=cv2.INTER_NEAREST)

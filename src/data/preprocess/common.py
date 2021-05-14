@@ -31,8 +31,10 @@ def open_colour_image(path: Path) -> np.ndarray:
 
 
 # Note: mask if modified in-place.
-def overlay_label(mask: np.ndarray, img: np.ndarray, label: np.ndarray):
-    img_idx = np.where(img > 0)
+def overlay_label(
+    mask: np.ndarray, img: np.ndarray, label: np.ndarray, thresh: int = 0
+):
+    img_idx = np.where(img > thresh)
     mask[img_idx] = label[img_idx]
 
 
@@ -56,7 +58,10 @@ def fill_contours(image, contours, color):
 
 
 def find_eye(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    if image.ndim == 3:
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image
 
     # A threshold value of 10 appears to work well.
     _, thresh = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
@@ -65,3 +70,19 @@ def find_eye(image):
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
     return contours[0]
+
+
+def pad_to_square(image, w, h, colour):
+    target = max(h, w)
+    top_bottom = (target - h) // 2
+    left_right = (target - w) // 2
+
+    return cv2.copyMakeBorder(
+        image,
+        top_bottom,
+        top_bottom,
+        left_right,
+        left_right,
+        cv2.BORDER_CONSTANT,
+        value=colour,
+    )
