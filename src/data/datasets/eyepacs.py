@@ -20,10 +20,17 @@ class HDF5EyePACS(Dataset):
     """
 
     def __init__(self, train: bool = True, transform: T.Compose = None):
-        file_path = Path("results") / "hdf5" / "eyepacs.hdf5"
+        file_path = Path("/data/js6317") / "hdf5" / "eyepacs.hdf5"
         f = h5py.File(file_path, "r")
-        self.images = f["train"]["images"][:]
-        self.grades = f["train"]["labels"][:]
+
+        if train:
+            self.images = f["train"]["images"]
+            self.grades = f["train"]["labels"]
+        else:
+            self.images = f["test"]["images"]
+            self.grades = f["test"]["labels"]
+
+        self.transform = transform
 
     def __len__(self):
         return len(self.grades)
@@ -33,9 +40,10 @@ class HDF5EyePACS(Dataset):
         grade = self.grades[item]
 
         image = torch.from_numpy(image).float()
+        image = self.transform(image)
         grade = int(grade)
 
-        return image, grade
+        return {"image": image, "grade": grade}
 
 
 class EyePACS(Dataset):
@@ -78,11 +86,11 @@ class EyePACS(Dataset):
 
 def test():
     img_size = 256
-    transform = T.Compose([CropShortEdge(), T.Resize(img_size), T.ToTensor()])
-    dataset = EyePACS(transform=transform)
+    transform = T.Compose([T.Resize(img_size), T.ToTensor()])
+    dataset = HDF5EyePACS(transform=transform)
     dataloader = DataLoader(dataset, batch_size=12)
     batch = next(iter(dataloader))
-    images = batch["image"]
+    images = batch["image"] / 255.0
     save_image(images, "eyepacs.png")
 
 
