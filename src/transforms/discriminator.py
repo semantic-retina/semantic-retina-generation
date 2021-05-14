@@ -3,7 +3,7 @@ from typing import List
 import torch
 from torch import Tensor
 
-from src.transforms.probabilistic_transform import ProbabilisticTransform
+from src.transforms.probabilistic import ProbabilisticTransform
 
 
 class DiscriminatorTransform:

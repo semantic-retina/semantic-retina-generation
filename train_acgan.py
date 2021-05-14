@@ -20,8 +20,8 @@ from src.models.acgan import Discriminator
 from src.models.acgan.generator import Generator
 from src.models.acgan.weights import weights_init_normal
 from src.options.acgan.train import get_args
-from src.transforms import custom_affine, custom_noise, custom_rotate
-from src.transforms.discriminator_transform import DiscriminatorTransform
+from src.transforms import probabilistic
+from src.transforms.discriminator import DiscriminatorTransform
 from src.utils.device import get_device
 from src.utils.sample import sample_gan
 from src.utils.seed import set_seed
@@ -73,8 +73,9 @@ def train(
     d_transform = DiscriminatorTransform(
         0.6,
         [
-            custom_rotate.Rotate(initial_ada_p),
-            custom_noise.GaussianNoise(initial_ada_p, 0.0, 1.0),
+            probabilistic.Rotate(initial_ada_p),
+            probabilistic.Affine(initial_ada_p, n_channels),
+            probabilistic.GaussianNoise(initial_ada_p, 0.0, 1.0),
         ],
         max_p=0.85,
     )
