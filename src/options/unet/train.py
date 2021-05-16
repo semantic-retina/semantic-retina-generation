@@ -41,12 +41,33 @@ def get_args():
         "--n_synthetic",
         type=int,
         default=0,
-        help="Whether or not to use synthetic data during training",
+        help="How many synthetic samples to use",
+    )
+    parser.add_argument(
+        "--n_real",
+        type=int,
+        default=-1,
+        help="How many real samples to use",
     )
     parser.add_argument(
         "--img_size",
         type=int,
         default=256,
     )
-
+    parser.add_argument(
+        "--load_name",
+        type=str,
+        default="",
+        help="If specified, loads the model with this name",
+    )
+    parser.add_argument(
+        "--log_interval",
+        type=int,
+        default=500,
+    )
+    parser.add_argument(
+        "--val_interval",
+        type=int,
+        default=1000,
+    )
     return parser.parse_args()

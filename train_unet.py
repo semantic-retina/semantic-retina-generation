@@ -18,6 +18,17 @@ from src.utils.device import get_device
 from src.utils.string import bold
 
 
+def create_model(load_name: str, n_classes: int) -> nn.Module:
+    # We take RGB images as input and predict the target class against the background.
+    model = UNet(n_channels=3, n_classes=n_classes, bilinear=True)
+    if load_name:
+        model.load_state_dict(
+            torch.load(f"results/unet/{load_name}/checkpoints/model_latest.pth")
+        )
+
+    return model
+
+
 def evaluate(model: nn.Module, loader: DataLoader, device: torch.device):
     model.eval()
 
@@ -42,6 +53,7 @@ def evaluate(model: nn.Module, loader: DataLoader, device: torch.device):
 
 
 def compute_loss(pred: Tensor, target: Tensor) -> Tensor:
+    target = target.squeeze(1)
     return F.cross_entropy(pred, target)
 
 
@@ -110,7 +122,7 @@ def train(
 
 
 def make_dataloaders(
-    img_size: int, val_proportion: float, n_synthetic: int, batch_size: int
+    img_size: int, val_proportion: float, n_real: int, n_synthetic: int, batch_size: int
 ) -> Tuple[DataLoader, Optional[DataLoader]]:
 
     image_transform, label_transform, joint_transform = make_transforms(img_size)
@@ -125,7 +137,21 @@ def make_dataloaders(
     n_val = int(len(real_dataset) * val_proportion)
     n_train = len(real_dataset) - n_val
 
-    train_dataset, val_dataset = random_split(real_dataset, [n_train, n_val])
+    assert n_real <= n_train
+
+    n_remainder = n_train - n_real
+
+    if n_real == -1:
+        n_real = n_train
+        n_remainder = 0
+
+    n_train = n_real
+
+    assert n_remainder >= 0
+
+    train_dataset, _, val_dataset = random_split(
+        real_dataset, [n_train, n_remainder, n_val]
+    )
 
     if n_synthetic > 0:
         synthetic_dataset = SyntheticDataset(
@@ -163,9 +189,6 @@ def main():
     opt = get_args()
     device = get_device()
 
-    log_interval = 200
-    val_interval = 100
-
     output_path = Path("results") / "unet" / opt.name
     checkpoint_path = output_path / "checkpoints"
     checkpoint_path.mkdir(parents=True, exist_ok=True)
@@ -175,12 +198,12 @@ def main():
     with open(options_file, "w") as f:
         print(opt, file=f)
 
-    # We take RGB images as input and predict the target class against the background.
-    model = UNet(n_channels=3, n_classes=2, bilinear=True)
+    n_classes = 9
+    model = create_model(opt.load_name, n_classes)
     model = model.to(device=device)
 
     train_loader, val_loader = make_dataloaders(
-        opt.img_size, opt.val_proportion, opt.n_synthetic, opt.batch_size
+        opt.img_size, opt.val_proportion, opt.n_real, opt.n_synthetic, opt.batch_size
     )
 
     n_train = len(train_loader.dataset)
@@ -192,6 +215,7 @@ def main():
         Epochs:          {opt.epochs}
         Training size:   {n_train}
         Validation size: {n_val}
+        Real size:       {opt.n_real}
         Synthetic size:  {opt.n_synthetic}
         """
     )
@@ -202,8 +226,8 @@ def main():
         epochs=opt.epochs,
         lr=opt.learning_rate,
         device=device,
-        log_interval=log_interval,
-        val_interval=val_interval,
+        log_interval=opt.log_interval,
+        val_interval=opt.val_interval,
         checkpoint_path=checkpoint_path,
         train_loader=train_loader,
         val_loader=val_loader,
