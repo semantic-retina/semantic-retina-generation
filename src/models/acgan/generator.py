@@ -13,19 +13,23 @@ class Generator(nn.Module):
 
         self.init_size = img_size // 2 ** 6  # Initial size before upsampling
 
-        hidden_channels = 256
+        self.hidden_channels = 512
 
         self.l1 = nn.Sequential(
-            nn.Linear(latent_dim, hidden_channels * self.init_size ** 2),
+            nn.Linear(latent_dim, self.hidden_channels * self.init_size ** 2),
         )
 
         self.conv_blocks = nn.Sequential(
-            *self.generator_block(hidden_channels, hidden_channels // 2),
-            *self.generator_block(hidden_channels // 2, hidden_channels // 4),
-            *self.generator_block(hidden_channels // 4, hidden_channels // 8),
-            *self.generator_block(hidden_channels // 8, hidden_channels // 16),
-            *self.generator_block(hidden_channels // 16, hidden_channels // 32),
-            *self.generator_block(hidden_channels // 32, out_channels),
+            *self.generator_block(self.hidden_channels, self.hidden_channels // 2),
+            *self.generator_block(self.hidden_channels // 2, self.hidden_channels // 4),
+            *self.generator_block(self.hidden_channels // 4, self.hidden_channels // 8),
+            *self.generator_block(
+                self.hidden_channels // 8, self.hidden_channels // 16
+            ),
+            *self.generator_block(
+                self.hidden_channels // 16, self.hidden_channels // 32
+            ),
+            *self.generator_block(self.hidden_channels // 32, out_channels),
             nn.Conv2d(out_channels, out_channels, 3, 1, 1),
         )
 
@@ -44,7 +48,9 @@ class Generator(nn.Module):
     def forward(self, noise: Tensor, labels: Tensor):
         gen_input = torch.mul(self.label_emb(labels), noise)
         out = self.l1(gen_input)
-        out = out.view(out.shape[0], 256, self.init_size, self.init_size)
+        out = out.view(
+            out.shape[0], self.hidden_channels, self.init_size, self.init_size
+        )
         img = self.conv_blocks(out)
         img = self.activation(img)
         return img
