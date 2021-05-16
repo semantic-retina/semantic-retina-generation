@@ -65,7 +65,7 @@ class EyePACS(Dataset):
         else:
             df_path = data_path / "test_public_df.csv"
 
-        self.df = pd.read_csv(df_path)[:100]
+        self.df = pd.read_csv(df_path)
 
     def __len__(self) -> int:
         return len(self.df)
