@@ -116,5 +116,17 @@ def get_args():
         action="store_false",
         dest="tensorboard",
     )
-    parser.set_defaults(label_smoothing=True, clip_gradient=True, tensorboard=True)
+    parser.add_argument(
+        "--use_copypaste",
+        action="store_true",
+        dest="use_copypaste",
+    )
+    parser.add_argument(
+        "--nouse_copypaste",
+        action="store_false",
+        dest="use_copypaste",
+    )
+    parser.set_defaults(
+        label_smoothing=True, clip_gradient=True, tensorboard=True, use_copypaste=False
+    )
     return parser.parse_args()

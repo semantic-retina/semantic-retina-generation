@@ -8,11 +8,12 @@ import torch.cuda
 import torchvision.transforms as transforms
 from torch import nn
 from torch.nn import NLLLoss
-from torch.utils.data import DataLoader
+from torch.utils.data import ConcatDataset, DataLoader
 from torchvision.transforms import InterpolationMode
 
 from src.data.common import Labels, get_labels
 from src.data.datasets.combined import CombinedDataset
+from src.data.datasets.copy_paste import CopyPasteDataset
 from src.logger.acgan import ACGANLogger, ACGANMetrics
 from src.losses.hinge_loss import HingeLoss
 from src.losses.wasserstein_loss import WassersteinLoss
@@ -69,6 +70,7 @@ def train(
 
     # Discriminator transforms augment every image the discriminator sees for ADA.
     # We aim for a target ADA r value of 0.6.
+    n_channels = len(lesions) + 1
     initial_ada_p = 0.0
     d_transform = DiscriminatorTransform(
         0.6,
@@ -237,6 +239,10 @@ def main():
     dataset = CombinedDataset(
         return_inst=False, return_image=False, label_transform=transform
     )
+    if opt.use_copypaste:
+        synthetic_dataset = CopyPasteDataset(label_transform=transform)
+        dataset = ConcatDataset((dataset, synthetic_dataset))
+
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
