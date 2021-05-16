@@ -23,10 +23,10 @@ def load_model(path: Path) -> nn.Module:
 
 def main():
     parser = ArgumentParser()
-    parser.add_argument("name", type=str, default="unet-real-fgadr")
+    parser.add_argument("name", type=str)
     opt = parser.parse_args()
 
-    model_path = Path(f"results/unet/checkpoints/{opt.name}.pth")
+    model_path = Path(f"results/unet/{opt.name}/checkpoints/model_latest.pth")
 
     img_size = 512
     batch_size = 1
@@ -62,7 +62,7 @@ def main():
 
         n_val += 1
 
-        masks_true = get_mask(Labels.EX, masks_true)
+        masks_true = get_mask(Labels.OD, masks_true)
         masks_true = masks_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
