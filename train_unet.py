@@ -11,6 +11,7 @@ from torch.utils.tensorboard import SummaryWriter
 from src.data.common import Labels, get_mask
 from src.data.datasets.combined import CombinedDataset
 from src.data.datasets.synthetic import SyntheticDataset
+from src.logger.unet import UNetLogger, UNetTrainMetrics, UNetValMetrics
 from src.models.unet import UNet
 from src.models.unet.transforms import make_transforms
 from src.options.unet.train import get_args
@@ -68,9 +69,8 @@ def train(
     checkpoint_path: Path,
     train_loader: DataLoader,
     val_loader: Optional[DataLoader],
+    logger: UNetLogger,
 ):
-
-    writer = SummaryWriter(comment=f"_{name}", flush_secs=10)
     iteration = 0
 
     optimizer = optim.RMSprop(
@@ -97,22 +97,15 @@ def train(
             optimizer.step()
 
             if iteration % log_interval == 0:
-                writer.add_scalar("Loss/train", loss.item(), iteration)
-                print(f"[{epoch}]\t [Loss: {loss.item()}]")
+                metrics = UNetTrainMetrics(
+                    iteration, epoch, loss.item(), images, masks_true, masks_pred
+                )
+                logger.log_train(metrics)
 
-            if iteration % val_interval == 0:
-
-                if val_loader is not None:
-                    val_score = evaluate(model, val_loader, device)
-                    writer.add_scalar("Loss/test", val_score, iteration)
-
-                    print(bold(f"Validation cross entropy: {val_score}"))
-
-                masks_pred = torch.argmax(masks_pred, dim=1, keepdim=True)
-                masks_true = masks_true.unsqueeze(1)
-                writer.add_images("Images", images, iteration)
-                writer.add_images("Masks/true", masks_true, iteration)
-                writer.add_images("Masks/pred", masks_pred, iteration)
+            if iteration % val_interval == 0 and val_loader is not None:
+                val_loss = evaluate(model, val_loader, device)
+                metrics = UNetValMetrics(iteration, epoch, val_loss)
+                logger.log_val(metrics)
 
             iteration += 1
 
@@ -220,6 +213,8 @@ def main():
         """
     )
 
+    logger = UNetLogger(opt.name, opt.n_epochs, opt.use_tensorboard)
+
     train(
         name=opt.name,
         model=model,
@@ -231,7 +226,10 @@ def main():
         checkpoint_path=checkpoint_path,
         train_loader=train_loader,
         val_loader=val_loader,
+        logger=logger,
     )
+
+    logger.close()
 
 
 if __name__ == "__main__":
