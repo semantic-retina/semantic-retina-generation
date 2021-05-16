@@ -14,6 +14,7 @@ from src.data.preprocess.common import (
     open_colour_image,
     overlay_label,
     pad_to_square,
+    transform,
     write_image,
 )
 from src.utils.sample import colour_labels_numpy
@@ -40,6 +41,7 @@ def process_image(
     label_output_path: Path,
     instance_output_path: Path,
     img_output_path: Path,
+    img_transformed_output_path: Path,
     colour: bool,
 ):
     retina_img = open_colour_image(retina_path / image_name)
@@ -80,6 +82,7 @@ def process_image(
     mask = cv2.resize(mask, (1280, 1280), interpolation=cv2.INTER_NEAREST)
     inst = cv2.resize(inst, (1280, 1280), interpolation=cv2.INTER_NEAREST)
     retina_img = cv2.resize(retina_img, (1280, 1280), interpolation=cv2.INTER_NEAREST)
+    transformed_retina_img = transform(retina_img)
 
     new_name = change_suffix(image_name, ".png")
 
@@ -89,6 +92,7 @@ def process_image(
     write_image(mask, label_output_path / new_name)
     write_image(inst, instance_output_path / new_name)
     write_image(retina_img, img_output_path / new_name)
+    write_image(transformed_retina_img, img_transformed_output_path / new_name)
 
 
 def preprocess_idrid(
@@ -106,6 +110,9 @@ def preprocess_idrid(
 
     img_output_path = output_path / "img"
     img_output_path.mkdir(parents=True, exist_ok=True)
+
+    img_transformed_output_path = output_path / "transformed"
+    img_transformed_output_path.mkdir(parents=True, exist_ok=True)
 
     train_test_path = "train" if train else "test"
 
@@ -145,6 +152,7 @@ def preprocess_idrid(
             label_output_path=label_output_path,
             instance_output_path=inst_output_path,
             img_output_path=img_output_path,
+            img_transformed_output_path=img_transformed_output_path,
             colour=colour,
         )
 

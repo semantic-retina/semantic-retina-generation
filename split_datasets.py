@@ -39,6 +39,7 @@ def make_fgadr(
     fgadr_image_path = fgadr_original_path / "Original_Images"
     fgadr_label_path = Path(processed_dir) / "label"
     fgadr_inst_path = Path(processed_dir) / "inst"
+    fgadr_transform_path = Path(processed_dir) / "transformed"
     fgadr_csv_path = fgadr_original_path / "DR_Seg_Grading_Label.csv"
 
     fgadr_df = pd.read_csv(fgadr_csv_path, header=None, names=["File", "Grade"])
@@ -49,7 +50,11 @@ def make_fgadr(
         fgadr_df = fgadr_df.loc[not_grader_1_cond]
 
     fgadr_df = make_absolute_paths(
-        fgadr_df, fgadr_image_path, fgadr_label_path, fgadr_inst_path
+        fgadr_df,
+        fgadr_image_path,
+        fgadr_label_path,
+        fgadr_inst_path,
+        fgadr_transform_path,
     )
 
     fgadr_df["Source"] = "FGADR"
@@ -71,6 +76,7 @@ def make_idrid(processed_dir: str, predict_grades: bool = False) -> pd.DataFrame
     idrid_image_path = idrid_root_path / "img"
     idrid_label_path = idrid_root_path / "label"
     idrid_inst_path = idrid_root_path / "inst"
+    idrid_transform_path = idrid_root_path / "transformed"
 
     idrid_files = [f.name for f in idrid_image_path.glob("**/*")]
     idrid_files.sort()
@@ -78,7 +84,11 @@ def make_idrid(processed_dir: str, predict_grades: bool = False) -> pd.DataFrame
     idrid_df = pd.DataFrame(idrid_files, columns=["File"])
 
     idrid_df = make_absolute_paths(
-        idrid_df, idrid_image_path, idrid_label_path, idrid_inst_path
+        idrid_df,
+        idrid_image_path,
+        idrid_label_path,
+        idrid_inst_path,
+        idrid_transform_path,
     )
 
     # Predict labels.
@@ -107,11 +117,12 @@ def make_diaretdb1(processed_dir: str, predict_grades: bool = False) -> pd.DataF
     :returns: A pandas DataFrame containing paths to files in the DIARETDB1 dataset.
     """
     # TODO(sonjoonho): Reduce duplication between this and IDRiD.
-    diaretdb1 = Path(processed_dir)
+    diaretdb1_root_path = Path(processed_dir)
 
-    diaretdb1_img_path = diaretdb1 / "img"
-    diaretdb1_label_path = diaretdb1 / "label"
-    diaretdb1_inst_path = diaretdb1 / "inst"
+    diaretdb1_img_path = diaretdb1_root_path / "img"
+    diaretdb1_label_path = diaretdb1_root_path / "label"
+    diaretdb1_inst_path = diaretdb1_root_path / "inst"
+    diaretdb1_transform_path = diaretdb1_root_path / "transformed"
 
     diaretdb1_files = [f.name for f in diaretdb1_img_path.glob("**/*")]
     diaretdb1_files.sort()
@@ -119,7 +130,11 @@ def make_diaretdb1(processed_dir: str, predict_grades: bool = False) -> pd.DataF
     diaretdb1_df = pd.DataFrame(diaretdb1_files, columns=["File"])
 
     diaretdb1_df = make_absolute_paths(
-        diaretdb1_df, diaretdb1_img_path, diaretdb1_label_path, diaretdb1_inst_path
+        diaretdb1_df,
+        diaretdb1_img_path,
+        diaretdb1_label_path,
+        diaretdb1_inst_path,
+        diaretdb1_transform_path,
     )
 
     # Predict labels.
@@ -159,12 +174,17 @@ def predict(model: nn.Module, df: pd.DataFrame) -> np.ndarray:
 
 
 def make_absolute_paths(
-    df: pd.DataFrame, image_path: Path, label_path: Path, inst_path: Path
+    df: pd.DataFrame,
+    image_path: Path,
+    label_path: Path,
+    inst_path: Path,
+    transform_path: Path,
 ) -> pd.DataFrame:
     """Converts filenames to absolute paths using the specified root paths."""
     df["Image"] = str(image_path) + "/" + df["File"].astype(str)
     df["Label"] = str(label_path) + "/" + df["File"].astype(str)
     df["Instance"] = str(inst_path) + "/" + df["File"].astype(str)
+    df["Transformed"] = str(transform_path) + "/" + df["File"].astype(str)
 
     return df
 

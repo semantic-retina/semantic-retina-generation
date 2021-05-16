@@ -13,6 +13,7 @@ from src.data.preprocess.common import (
     open_binary_mask,
     open_colour_image,
     overlay_label,
+    transform,
     write_image,
 )
 from src.utils.sample import colour_labels_numpy
@@ -55,6 +56,7 @@ def process_image(
     irma_label: np.ndarray,
     label_output_path: Path,
     inst_output_path: Path,
+    img_transform_output_path: Path,
     od_file_path: str,
     colour: bool,
 ):
@@ -80,11 +82,14 @@ def process_image(
     overlay_label(mask, nv_img, nv_label)
     overlay_label(mask, irma_img, irma_label)
 
+    transformed_retina_img = transform(retina_img)
+
     if colour:
         mask = colour_labels_numpy(mask)
 
     write_image(mask, label_output_path / image_name)
     write_image(inst, inst_output_path / image_name)
+    write_image(transformed_retina_img, img_transform_output_path / image_name)
 
 
 def preprocess_fgadr(
@@ -103,6 +108,9 @@ def preprocess_fgadr(
 
     inst_output_path = output_path / "inst"
     inst_output_path.mkdir(parents=True, exist_ok=True)
+
+    img_transform_output_path = output_path / "transformed"
+    img_transform_output_path.mkdir(parents=True, exist_ok=True)
 
     retina_path = root_path / "Original_Images"
     ex_path = root_path / "HardExudate_Masks"
@@ -142,6 +150,7 @@ def preprocess_fgadr(
             irma_label=irma_label,
             label_output_path=label_output_path,
             inst_output_path=inst_output_path,
+            img_transform_output_path=img_transform_output_path,
             od_file_path=od_file_path,
             colour=colour,
         )

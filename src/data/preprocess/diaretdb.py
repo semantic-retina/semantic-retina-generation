@@ -14,6 +14,7 @@ from src.data.preprocess.common import (
     open_colour_image,
     overlay_label,
     pad_to_square,
+    transform,
     write_image,
 )
 from src.utils.sample import colour_labels_numpy
@@ -59,6 +60,7 @@ def process_image(
     label_output_path: Path,
     inst_output_path: Path,
     img_output_path: Path,
+    img_transformed_output_path: Path,
     od_file_path: str,
     colour: bool,
 ):
@@ -99,6 +101,7 @@ def process_image(
     mask = cv2.resize(mask, (1280, 1280), interpolation=cv2.INTER_NEAREST)
     inst = cv2.resize(inst, (1280, 1280), interpolation=cv2.INTER_NEAREST)
     retina_img = cv2.resize(retina_img, (1280, 1280), interpolation=cv2.INTER_NEAREST)
+    transformed_retina_img = transform(retina_img)
 
     if colour:
         mask = colour_labels_numpy(mask)
@@ -106,6 +109,7 @@ def process_image(
     write_image(mask, label_output_path / image_name)
     write_image(inst, inst_output_path / image_name)
     write_image(retina_img, img_output_path / image_name)
+    write_image(transformed_retina_img, img_transformed_output_path / image_name)
 
 
 def preprocess_diaretdb1(
@@ -127,6 +131,9 @@ def preprocess_diaretdb1(
 
     img_output_path = output_path / "img"
     img_output_path.mkdir(parents=True, exist_ok=True)
+
+    img_transformed_output_path = output_path / "transformed"
+    img_transformed_output_path.mkdir(parents=True, exist_ok=True)
 
     retina_path = root_path / "ddb1_fundusimages"
 
@@ -166,6 +173,7 @@ def preprocess_diaretdb1(
             label_output_path=label_output_path,
             inst_output_path=inst_output_path,
             img_output_path=img_output_path,
+            img_transformed_output_path=img_transformed_output_path,
             od_file_path=od_file_path,
             colour=colour,
         )

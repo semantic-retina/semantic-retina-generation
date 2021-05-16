@@ -86,3 +86,24 @@ def pad_to_square(image, w, h, colour):
         cv2.BORDER_CONSTANT,
         value=colour,
     )
+
+
+def transform(image):
+    scale = image.shape[0]
+    image = cv2.addWeighted(
+        image, 4, cv2.GaussianBlur(image, (0, 0), scale / 30), -4, 128
+    )
+
+    # Remove outer 10% boundary effects
+    mask = np.zeros(image.shape)
+    mask = cv2.circle(
+        mask,
+        (image.shape[1] // 2, image.shape[0] // 2),
+        int(scale * 0.9) // 2,
+        (1, 1, 1),
+        -1,
+        8,
+        0,
+    )
+    image = image * mask + 128 * (1 - mask)
+    return image

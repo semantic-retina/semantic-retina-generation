@@ -57,6 +57,7 @@ class CombinedDataset(Dataset):
         self.return_image = return_image
         self.return_label = return_label
         self.return_inst = return_inst
+        self.return_transformed = return_transformed
         self.return_grade = return_grade
         self.return_filename = return_filename
 
@@ -94,6 +95,14 @@ class CombinedDataset(Dataset):
             if self.common_transform is not None:
                 inst = self.common_transform(inst)
             sample["inst"] = inst
+
+        if self.return_transformed:
+            image = self.get_image(row["Transformed"])
+            if self.image_transform is not None:
+                image = self.image_transform(image)
+            if self.common_transform is not None:
+                image = self.common_transform(image)
+            sample["transformed"] = image
 
         if self.joint_transform is not None:
             keys = sample.keys()
