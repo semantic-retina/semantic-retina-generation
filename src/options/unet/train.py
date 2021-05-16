@@ -8,8 +8,7 @@ def get_args():
         type=str,
     )
     parser.add_argument(
-        "-e",
-        "--epochs",
+        "--n_epochs",
         metavar="E",
         type=int,
         default=40,
@@ -17,7 +16,6 @@ def get_args():
         dest="epochs",
     )
     parser.add_argument(
-        "-b",
         "--batch_size",
         metavar="B",
         type=int,
@@ -26,8 +24,7 @@ def get_args():
         help="Batch size",
     )
     parser.add_argument(
-        "-l",
-        "--learning_rate",
+        "--lr",
         metavar="LR",
         type=float,
         nargs="?",
@@ -35,7 +32,6 @@ def get_args():
         help="Learning rate",
     )
     parser.add_argument(
-        "-v",
         "--val_proportion",
         type=float,
         default=0.2,
