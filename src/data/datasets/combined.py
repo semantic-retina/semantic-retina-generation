@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Dict
 
@@ -28,6 +29,8 @@ class CombinedDataset(Dataset):
         return_label: bool = True,
         return_inst: bool = True,
         return_grade: bool = True,
+        return_filename: bool = True,
+        return_transformed: bool = True,
         mode: str = TRAIN,
     ):
         root_path = Path(CombinedDataset.root_dir)
@@ -51,6 +54,7 @@ class CombinedDataset(Dataset):
         self.return_label = return_label
         self.return_inst = return_inst
         self.return_grade = return_grade
+        self.return_filename = return_filename
 
     def get_image(self, path: str) -> Image:
         return Image.open(path)
@@ -90,5 +94,9 @@ class CombinedDataset(Dataset):
         if self.return_grade:
             grade = int(row["Grade"])
             sample["grade"] = grade
+
+        if self.return_filename:
+            filename = os.path.basename(row["Image"])
+            sample["filename"] = filename
 
         return sample
