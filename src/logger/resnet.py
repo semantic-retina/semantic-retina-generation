@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from torch.utils.tensorboard import SummaryWriter
 
+from src.logger.common import timestamp
 from src.utils.string import bold
 
 
@@ -12,15 +13,13 @@ class ResNetTrainMetrics:
     epoch: int
     loss: float
     acc: float
-    loss: float
 
 
 @dataclass
-class ResNetTestMetrics:
+class ResNetValidateMetrics:
     step: int
     loss: float
     acc: float
-    loss: float
 
 
 class ResNetLogger:
@@ -35,26 +34,30 @@ class ResNetLogger:
     def log_train(self, m: ResNetTrainMetrics):
         if self.tensorboard is not None:
             writer = self.tensorboard
-
             writer.add_scalar("Loss/Training", m.loss, m.step)
             writer.add_scalar("Accuracy/Training", m.acc, m.step)
 
+        time = timestamp()
         print(
+            f"[{time}]\t"
             f"[Training {m.epoch}]\t"
             f"[Loss: {m.loss:.4f}]\t"
             f"[Accuracy: {m.acc:.2f}]"
         )
 
-    def log_val(self, m: ResNetTestMetrics):
-
+    def log_val(self, m: ResNetValidateMetrics):
         if self.tensorboard is not None:
             writer = self.tensorboard
-
             writer.add_scalar("Loss/Validation", m.loss, m.step)
             writer.add_scalar("Accuracy/Validation", m.acc, m.step)
 
+        time = timestamp()
         print(
-            bold(f"[Validate]\t" f"[Loss: {m.loss:.4f}]\t" f"[Accuracy: {m.acc:.2f}]")
+            bold(
+                f"[{time}] [Validate]\t"
+                f"[Loss: {m.loss:.4f}]\t"
+                f"[Accuracy: {m.acc:.2f}]"
+            )
         )
 
     def close(self):

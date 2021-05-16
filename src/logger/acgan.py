@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 
+from src.logger.common import timestamp
 from src.utils.sample import colour_labels
 
 
@@ -45,7 +46,9 @@ class ACGANLogger:
             writer.add_images("Images/Real", colour_labels(m.real_imgs), m.step)
             writer.add_images("Images/Fake", colour_labels(m.gen_imgs), m.step)
 
+        time = timestamp()
         print(
+            f"[{time}]"
             f"[Epoch {m.epoch}/{self.n_epochs}] "
             f"[D loss: {m.d_loss:.4f}, acc: {100 * m.d_acc:.2f}%] "
             f"[G loss: {m.g_loss:.4f}] "
