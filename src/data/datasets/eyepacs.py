@@ -10,8 +10,6 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms as T
 from torchvision.utils import save_image
 
-from src.transforms.crop import CropShortEdge
-
 
 class HDF5EyePACS(Dataset):
     """
