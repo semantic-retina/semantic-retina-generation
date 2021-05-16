@@ -20,9 +20,6 @@ COLOUR_MAP = torch.tensor(
     dtype=torch.long,
 )
 
-# We need to flip the colours since OpenCV expects channels in BGR order.
-COLOUR_MAP_NUMPY = np.flip(COLOUR_MAP.numpy(), axis=1)
-
 
 def colour_labels(gen_imgs: Tensor) -> Tensor:
     """
@@ -37,10 +34,16 @@ def colour_labels(gen_imgs: Tensor) -> Tensor:
         gen_imgs.ndim == 4
     ), f"Expected sample to have 4 dimensions, got {gen_imgs.ndim}"
 
-    batch_size, channels, height, width = gen_imgs.shape
-    gray_image = torch.argmax(gen_imgs, dim=1)
+    gray_image = torch.argmax(gen_imgs, dim=1, keepdim=True)
+    return colour_labels_flat(gray_image)
+
+
+def colour_labels_flat(gray_image: Tensor) -> Tensor:
+    batch_size, channels, height, width = gray_image.shape
+    assert channels == 1
     coloured = torch.zeros(batch_size, 3, height, width, dtype=torch.long)
-    nc = 8 + 1
+    gray_image = gray_image.squeeze(1)
+    nc = 9
     for label in range(nc):
         mask = gray_image == label
         coloured[:, 0, :, :][mask] = COLOUR_MAP[label, 0]
@@ -50,11 +53,12 @@ def colour_labels(gen_imgs: Tensor) -> Tensor:
     return coloured.float() / 255.0
 
 
-def colour_labels_numpy(image: np.ndarray) -> np.ndarray:
+def colour_labels_numpy(image: np.ndarray, reverse_channels: bool = True) -> np.ndarray:
     """
     Turns a Numpy array representing semantic labels into human-discernible colours.
 
-    :param image: Expects a Numpy array of shape H x W.
+    :param image: Expects a Numpy array of shape H x W with values in [0, 6].
+    :param reverse_channels: Whether or not to flip the channel order from RGB to BGR.
 
     :returns: A Numpy array of shape H x W x C.
     """
@@ -63,12 +67,18 @@ def colour_labels_numpy(image: np.ndarray) -> np.ndarray:
     height, width = image.shape
     coloured = np.zeros((height, width, 3))
 
-    nc = 6 + 1
+    colour_map = COLOUR_MAP.numpy()
+
+    # We may need to flip the colours since OpenCV expects channels in BGR order.
+    if reverse_channels:
+        colour_map = np.flip(colour_map, axis=1)
+
+    nc = 9
     for label in range(nc):
         mask = image == label
-        coloured[:, :, 0][mask] = COLOUR_MAP_NUMPY[label, 0]
-        coloured[:, :, 1][mask] = COLOUR_MAP_NUMPY[label, 1]
-        coloured[:, :, 2][mask] = COLOUR_MAP_NUMPY[label, 2]
+        coloured[:, :, 0][mask] = colour_map[label, 0]
+        coloured[:, :, 1][mask] = colour_map[label, 1]
+        coloured[:, :, 2][mask] = colour_map[label, 2]
 
     return coloured
 
