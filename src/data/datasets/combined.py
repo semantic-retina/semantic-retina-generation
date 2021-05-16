@@ -7,6 +7,8 @@ from PIL import Image
 from torch.utils.data import Dataset
 from torchvision import transforms as T
 
+from src.transforms import joint
+
 
 class CombinedDataset(Dataset):
     """
@@ -25,6 +27,7 @@ class CombinedDataset(Dataset):
         image_transform: T.Compose = None,
         label_transform: T.Compose = None,
         common_transform: T.Compose = None,
+        joint_transform: joint.Compose = None,
         return_image: bool = True,
         return_label: bool = True,
         return_inst: bool = True,
@@ -49,6 +52,7 @@ class CombinedDataset(Dataset):
         self.image_transform = image_transform
         self.label_transform = label_transform
         self.common_transform = common_transform
+        self.joint_transform = joint_transform
 
         self.return_image = return_image
         self.return_label = return_label
@@ -90,6 +94,13 @@ class CombinedDataset(Dataset):
             if self.common_transform is not None:
                 inst = self.common_transform(inst)
             sample["inst"] = inst
+
+        if self.joint_transform is not None:
+            keys = sample.keys()
+            to_transform = [sample[k] for k in keys]
+            transformed = self.joint_transform(to_transform)
+            for i, k in enumerate(keys):
+                sample[k] = transformed[i]
 
         if self.return_grade:
             grade = int(row["Grade"])

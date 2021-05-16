@@ -36,12 +36,13 @@ def main():
     model = load_model(model_path)
     model.to(device)
 
-    image_transform, label_transform = make_transforms(img_size)
+    image_transform, label_transform, joint_transform = make_transforms(img_size)
 
     dataset = CombinedDataset(
         image_transform=image_transform,
         label_transform=label_transform,
-        train=False,
+        joint_transform=joint_transform,
+        mode="test",
     )
     val_loader = DataLoader(
         dataset,

@@ -113,11 +113,12 @@ def make_dataloaders(
     img_size: int, val_proportion: float, n_synthetic: int, batch_size: int
 ) -> Tuple[DataLoader, Optional[DataLoader]]:
 
-    image_transform, label_transform = make_transforms(img_size)
+    image_transform, label_transform, joint_transform = make_transforms(img_size)
 
     real_dataset = CombinedDataset(
         image_transform=image_transform,
         label_transform=label_transform,
+        joint_transform=joint_transform,
         return_grade=False,
     )
 
