@@ -28,34 +28,37 @@ from src.options.preprocess import get_args
 
 def main():
     opt = get_args()
-    preprocess_idrid(
-        opt.idrid_root_dir,
-        opt.output_dir,
-        opt.n_workers,
-        True,
-        opt.colour,
-    )
-    preprocess_idrid(
-        opt.idrid_root_dir,
-        opt.output_dir,
-        opt.n_workers,
-        False,
-        opt.colour,
-    )
-    preprocess_fgadr(
-        opt.fgadr_root_dir,
-        opt.output_dir,
-        opt.n_workers,
-        opt.fgadr_annotation_file,
-        opt.colour,
-    )
-    preprocess_diaretdb1(
-        opt.diaretdb1_root_dir,
-        opt.output_dir,
-        opt.n_workers,
-        opt.diaretdb1_annotation_file,
-        opt.colour,
-    )
+    if opt.idrid:
+        preprocess_idrid(
+            opt.idrid_root_dir,
+            opt.output_dir,
+            opt.n_workers,
+            True,
+            opt.colour,
+        )
+        preprocess_idrid(
+            opt.idrid_root_dir,
+            opt.output_dir,
+            opt.n_workers,
+            False,
+            opt.colour,
+        )
+    if opt.fgadr:
+        preprocess_fgadr(
+            opt.fgadr_root_dir,
+            opt.output_dir,
+            opt.n_workers,
+            opt.fgadr_annotation_file,
+            opt.colour,
+        )
+    if opt.diaretdb1:
+        preprocess_diaretdb1(
+            opt.diaretdb1_root_dir,
+            opt.output_dir,
+            opt.n_workers,
+            opt.diaretdb1_annotation_file,
+            opt.colour,
+        )
 
 
 if __name__ == "__main__":

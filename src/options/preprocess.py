@@ -55,6 +55,48 @@ def get_args():
         action="store_false",
         dest="colour",
     )
-    parser.set_defaults(colour=False)
+    parser.add_argument(
+        "--fgadr",
+        action="store_true",
+        dest="fgadr",
+    )
+    parser.add_argument(
+        "--nofgadr",
+        action="store_false",
+        dest="fgadr",
+    )
+    parser.add_argument(
+        "--idrid",
+        action="store_true",
+        dest="idrid",
+    )
+    parser.add_argument(
+        "--noidrid",
+        action="store_false",
+        dest="idrid",
+    )
+    parser.add_argument(
+        "--diaretdb1",
+        action="store_true",
+        dest="diaretdb1",
+    )
+    parser.add_argument(
+        "--nodiaretdb1",
+        action="store_false",
+        dest="diaretdb1",
+    )
+    parser.add_argument(
+        "--eyepacs",
+        action="store_true",
+        dest="eyepacs",
+    )
+    parser.add_argument(
+        "--eyepacs",
+        action="store_false",
+        dest="eyepacs",
+    )
+    parser.set_defaults(
+        colour=False, fgadr=True, idrid=True, diaretdb1=True, eyepacs=True
+    )
 
     return parser.parse_args()
