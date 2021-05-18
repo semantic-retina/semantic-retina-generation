@@ -34,6 +34,17 @@ def get_args():
         help="JSON file containing annotations for the FGADR dataset",
     )
     parser.add_argument(
+        "--eophtha_root_dir",
+        type=str,
+        default="/vol/bitbucket/js6317/individual-project/data/e_optha/",
+        help="Path to the e-ophtha dataset",
+    )
+    parser.add_argument(
+        "--eophtha_od_dir",
+        type=str,
+        default="data/eophtha/od",
+    )
+    parser.add_argument(
         "--output_dir",
         type=str,
         default="data/",
@@ -86,17 +97,17 @@ def get_args():
         dest="diaretdb1",
     )
     parser.add_argument(
-        "--eyepacs",
+        "--eophtha",
         action="store_true",
-        dest="eyepacs",
+        dest="eophtha",
     )
     parser.add_argument(
-        "--eyepacs",
+        "--noeophtha",
         action="store_false",
-        dest="eyepacs",
+        dest="eophtha",
     )
     parser.set_defaults(
-        colour=False, fgadr=True, idrid=True, diaretdb1=True, eyepacs=True
+        colour=False, fgadr=True, idrid=True, diaretdb1=True, eophtha=True
     )
 
     return parser.parse_args()

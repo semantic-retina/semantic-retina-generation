@@ -24,6 +24,11 @@ def get_args():
         default="/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/diaretdb1/",
     )
     parser.add_argument(
+        "--eophtha_processed_dir",
+        type=str,
+        default="/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/eophtha/",
+    )
+    parser.add_argument(
         "--train_size",
         type=float,
         default=0.8,
@@ -36,23 +41,16 @@ def get_args():
     parser.add_argument(
         "--grade_inference_strategy",
         type=str,
-        default="random",
+        default="image",
     )
     parser.add_argument(
         "--grade_inference_model",
         type=str,
-        default="",
+        default="eyepacs_transformed",
     )
     parser.add_argument(
-        "--exclude_grader_1",
-        dest="exclude_grader_1",
-        action="store_true",
+        "--denylist", type=str, dest="denylist", default="data/fgadr_denylist.csv"
     )
-    parser.add_argument(
-        "--noexclude_grader_1",
-        action="store_false",
-        dest="exclude_grader_1",
-    )
-    parser.set_defaults(exclude_grader_1=False, predict_grades=True)
+    parser.set_defaults(predict_grades=True)
 
     return parser.parse_args()
