@@ -11,7 +11,7 @@ def get_args():
         "--n_epochs",
         metavar="E",
         type=int,
-        default=40,
+        default=50,
         help="Number of epochs",
         dest="epochs",
     )
@@ -20,7 +20,7 @@ def get_args():
         metavar="B",
         type=int,
         nargs="?",
-        default=16,
+        default=8,
         help="Batch size",
     )
     parser.add_argument(
@@ -28,7 +28,7 @@ def get_args():
         metavar="LR",
         type=float,
         nargs="?",
-        default=0.0001,
+        default=0.001,
         help="Learning rate",
     )
     parser.add_argument(
@@ -52,7 +52,7 @@ def get_args():
     parser.add_argument(
         "--img_size",
         type=int,
-        default=256,
+        default=512,
     )
     parser.add_argument(
         "--load_name",
