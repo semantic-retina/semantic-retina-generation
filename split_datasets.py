@@ -14,6 +14,7 @@ import torchvision.transforms as T
 from PIL import Image
 from sklearn.model_selection import train_test_split
 from torch import nn
+from torchvision.transforms import InterpolationMode
 
 from src.data.common import get_label_semantics
 from src.models.resnet.label import load_label_model
@@ -22,7 +23,7 @@ from src.options.split import get_args
 
 
 def make_fgadr(
-    original_dir: str, processed_dir: str, exclude_grader_1: bool = True
+    original_dir: str, processed_dir: str, denylist_path: str
 ) -> pd.DataFrame:
     """
     :param original_dir: Path to the original FGADR directory. We use this to get the
@@ -44,10 +45,11 @@ def make_fgadr(
 
     fgadr_df = pd.read_csv(fgadr_csv_path, header=None, names=["File", "Grade"])
 
-    if exclude_grader_1:
-        grader = pd.to_numeric(fgadr_df["File"].str[5])
-        not_grader_1_cond = grader != 1
-        fgadr_df = fgadr_df.loc[not_grader_1_cond]
+    if denylist_path:
+        denylist = pd.read_csv(denylist_path)
+        fgadr_df = pd.concat([fgadr_df, denylist]).drop_duplicates(
+            keep=False, subset="File"
+        )
 
     fgadr_df = make_absolute_paths(
         fgadr_df,
@@ -185,7 +187,7 @@ def predict_from_label(model: nn.Module, df: pd.DataFrame) -> np.ndarray:
     """Predicts labels dataset using the specified model."""
     img_size = 512
     transform = T.Compose(
-        [T.Resize(img_size, interpolation=Image.NEAREST), T.ToTensor()]
+        [T.Resize(img_size, interpolation=InterpolationMode.NEAREST), T.ToTensor()]
     )
 
     predictions = np.empty(len(df), dtype=int)
@@ -207,7 +209,7 @@ def predict_from_image(model: nn.Module, df: pd.DataFrame) -> np.ndarray:
 
     predictions = np.empty(len(df), dtype=int)
     for i, row in df.iterrows():
-        image = Image.open(row["Image"])
+        image = Image.open(row["Transformed"])
         image = transform(image).unsqueeze(0) * 255.0
         pred = model(image)
         pred = torch.argmax(pred)
@@ -241,7 +243,7 @@ def main():
     fgadr_df = make_fgadr(
         opt.fgadr_original_dir,
         opt.fgadr_processed_dir,
-        exclude_grader_1=opt.exclude_grader_1,
+        opt.denylist,
     )
 
     idrid_df = make_idrid(
