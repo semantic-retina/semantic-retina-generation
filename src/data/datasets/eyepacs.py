@@ -38,7 +38,10 @@ class HDF5EyePACS(Dataset):
         grade = self.grades[item]
 
         image = torch.from_numpy(image).float()
-        image = self.transform(image)
+
+        if self.transform is not None:
+            image = self.transform(image)
+
         grade = int(grade)
 
         return {"image": image, "grade": grade}
