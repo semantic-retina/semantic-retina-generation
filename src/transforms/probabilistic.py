@@ -65,7 +65,7 @@ class Affine(ProbabilisticTransform):
         # Set the area outside the transform as background.
         fill = [1] + [0 for _ in range(n_channels - 1)]
         self.transform = transforms.RandomAffine(
-            90, translate, scale, fill=fill, fillcolor=None
+            360, translate, scale, fill=fill, fillcolor=None
         )
 
     def update_p(self, p: float):
