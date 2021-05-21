@@ -4,46 +4,16 @@ from pathlib import Path
 import torch
 from torch import nn, optim
 from torch.utils.data import ConcatDataset, DataLoader
-from torchvision import models
 from torchvision import transforms as T
 
-from src.data.datasets.eyepacs import EyePACS
+from src.data.datasets.eyepacs import HDF5EyePACS
 from src.data.datasets.synthetic import SyntheticDataset
-from src.logger.resnet import (ResNetLogger, ResNetTestMetrics,
-                               ResNetTrainMetrics)
+from src.logger.resnet import ResNetLogger, ResNetTrainMetrics, ResNetValidateMetrics
+from src.models.resnet import get_params_to_update
+from src.models.resnet.retina import create_retina_model
 from src.options.resnet.train import get_args
-from src.transforms.crop import CropShortEdge
 from src.utils.device import get_device
 from src.utils.seed import set_seed
-
-
-def create_model(use_pretrained: bool, feature_extract: bool, n_classes: int):
-    model = models.resnet18(pretrained=use_pretrained)
-    set_parameter_requires_grad(model, feature_extract)
-
-    # Reshape the final layer.
-    fc_n_features = model.fc.in_features
-    model.fc = nn.Linear(fc_n_features, n_classes)
-
-    return model
-
-
-def get_params_to_update(model: nn.Module, feature_extract: bool):
-    params_to_update = model.parameters()
-
-    if feature_extract:
-        params_to_update = []
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                params_to_update.append(param)
-
-    return params_to_update
-
-
-def set_parameter_requires_grad(model: nn.Module, feature_extract: bool):
-    if feature_extract:
-        for param in model.parameters():
-            param.requires_grad = False
 
 
 def train_step(
@@ -77,9 +47,8 @@ def train_step(
         loss.backward()
         optimizer.step()
 
-        preds = torch.argmax(outputs, dim=1)
-
         if iteration % log_interval == 0:
+            preds = torch.argmax(outputs, dim=1)
             train_loss = loss.item()
             train_acc = torch.sum(torch.eq(preds, grades)).item() / len(grades)
 
@@ -102,8 +71,10 @@ def validate(
     n_val_samples = 0
     val_loss = 0.0
     val_corrects = 0.0
+
     for batch in val_loader:
         images, grades = batch["image"], batch["grade"]
+
         images = images.to(device)
         grades = grades.to(device)
 
@@ -121,7 +92,7 @@ def validate(
     val_loss /= n_val_samples
     val_acc = val_corrects / n_val_samples
 
-    metrics = ResNetTestMetrics(iteration, val_loss, val_acc)
+    metrics = ResNetValidateMetrics(iteration, val_loss, val_acc)
     logger.log_val(metrics)
 
 
@@ -138,13 +109,29 @@ def train(
     feature_extract: bool,
     use_synthetic: bool,
 ) -> nn.Module:
-
-    transform = T.Compose([CropShortEdge(), T.Resize(img_size), T.ToTensor()])
-    train_dataset = EyePACS(train=True, transform=transform)
-    synthetic_dataset = SyntheticDataset(
-        image_transform=transform, return_label=False, return_inst=False
+    transform = T.Compose(
+        [T.Resize(img_size), T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2)]
     )
+    train_dataset = HDF5EyePACS(train=True, transform=transform)
+
+    # transform = T.Compose(
+    #     [T.Resize(img_size, interpolation=InterpolationMode.NEAREST), T.ToTensor()]
+    # )
+    # train_dataset = CombinedDataset(common_transform=transform)
+    # train_dataset.df = train_dataset.df[train_dataset.df["Source"] == "FGADR"]
+    # class_proportions = [73.5, 7.0, 15.1, 2.5, 2.0]
+    # num_samples = len(train_dataset)
+    # class_weights = torch.tensor([num_samples / c for c in class_proportions]).to(
+    #     device
+    # )
+    # print(class_weights)
+    # weights = [class_weights[i] for i in train_dataset.grades]
+    # sampler = WeightedRandomSampler(weights=weights, num_samples=len(train_dataset))
+
     if use_synthetic:
+        synthetic_dataset = SyntheticDataset(
+            image_transform=transform, return_label=False, return_inst=False
+        )
         train_dataset = ConcatDataset((train_dataset, synthetic_dataset))
 
     train_loader = DataLoader(
@@ -152,10 +139,13 @@ def train(
         batch_size=batch_size,
         num_workers=8,
         pin_memory=True,
-        shuffle=True,
+        shuffle=True
+        # sampler=sampler,
     )
 
-    val_dataset = EyePACS(train=False, transform=transform)
+    val_dataset = HDF5EyePACS(train=False, transform=transform)
+    # val_dataset = CombinedDataset(common_transform=transform, mode=CombinedDataset.TEST)
+    # val_dataset.df = val_dataset.df[val_dataset.df["Source"] == "FGADR"]
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -167,6 +157,7 @@ def train(
     params_to_update = get_params_to_update(model, feature_extract)
     optimizer = optim.Adam(params_to_update, lr=lr)
 
+    # eyepacs_weight = torch.tensor([1.0, 10.5, 4.87, 29.4, 36.75]).to(device)
     criterion = nn.CrossEntropyLoss()
 
     for epoch in range(num_epochs):
@@ -202,7 +193,8 @@ def main():
 
     # Freeze layers if we're only using it for feature extraction.
     device = get_device()
-    model = create_model(use_pretrained, feature_extract, n_classes)
+    model = create_retina_model(use_pretrained, feature_extract, n_classes)
+    model = nn.DataParallel(model)
     model = model.to(device)
 
     train(

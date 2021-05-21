@@ -47,6 +47,8 @@ def make_fgadr(
 
     if denylist_path:
         denylist = pd.read_csv(denylist_path)
+        # Set dummy value to preserve the int type of Grade.
+        denylist["Grade"] = 0
         fgadr_df = pd.concat([fgadr_df, denylist]).drop_duplicates(
             keep=False, subset="File"
         )
@@ -266,14 +268,22 @@ def predict_from_image(model: nn.Module, df: pd.DataFrame) -> np.ndarray:
     """Predicts labels using the specified model."""
     img_size = 512
     transform = T.Compose([T.Resize(img_size), T.ToTensor()])
+    rotation = T.RandomRotation(360)
 
     predictions = np.empty(len(df), dtype=int)
     for i, row in df.iterrows():
         image = Image.open(row["Transformed"])
         image = transform(image).unsqueeze(0) * 255.0
-        pred = model(image)
-        pred = torch.argmax(pred)
-        predictions[i] = pred.item()
+        tta_runs = 5
+        tta_preds = torch.empty((tta_runs, 5), dtype=float).cuda()
+        for run in range(tta_runs):
+            transformed_image = rotation(image)
+            with torch.no_grad():
+                output = model(transformed_image)
+            tta_preds[run, :] = output
+        tta_preds = torch.mean(tta_preds, dim=0)
+        pred = torch.argmax(tta_preds)
+        predictions[i] = int(pred.item())
 
     return predictions
 
