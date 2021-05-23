@@ -8,6 +8,7 @@ from src.data.preprocess.common import (
     BLACK,
     GRAY_CLASS,
     WHITE,
+    change_suffix,
     fill_contours,
     find_eye,
     open_binary_mask,
@@ -18,10 +19,6 @@ from src.data.preprocess.common import (
     write_image,
 )
 from src.utils.sample import colour_labels_numpy
-
-
-def change_suffix(image_name: str, suffix: str):
-    return image_name[:-4] + suffix
 
 
 def process_image(

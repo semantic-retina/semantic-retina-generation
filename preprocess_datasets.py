@@ -21,8 +21,7 @@ The semantic labels are encoded as gray values with:
 - Background: 255
 """
 from src.data.preprocess.diaretdb import preprocess_diaretdb1
-from src.data.preprocess.eophtha_ex import preprocess_eophtha_ex
-from src.data.preprocess.eophtha_ma import preprocess_eophtha_ma
+from src.data.preprocess.eophtha import preprocess_eophtha
 from src.data.preprocess.fgadr import preprocess_fgadr
 from src.data.preprocess.idrid import preprocess_idrid
 from src.options.preprocess import get_args
@@ -62,21 +61,14 @@ def main():
             opt.colour,
         )
     if opt.eophtha:
-        preprocess_eophtha_ex(
+        preprocess_eophtha(
             opt.eophtha_root_dir,
             opt.eophtha_od_dir,
             opt.output_dir,
             opt.n_workers,
             opt.colour,
         )
-
-        preprocess_eophtha_ma(
-            opt.eophtha_root_dir,
-            opt.eophtha_od_dir,
-            opt.output_dir,
-            opt.n_workers,
-            opt.colour,
-        )
+        # preprocess_eophtha_healthy()
 
 
 if __name__ == "__main__":

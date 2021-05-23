@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Tuple
 
 import cv2
 import numpy as np
@@ -19,11 +20,17 @@ GRAY_CLASS = {
 }
 
 
-def open_binary_mask(path: Path) -> np.ndarray:
+def open_binary_mask(
+    path: Path, img_size: Tuple[int, int] = (2848, 4288)
+) -> np.ndarray:
     try:
         return open_image(path, cv2.IMREAD_GRAYSCALE)
     except FileNotFoundError:
-        return np.zeros((2848, 4288))
+        return np.zeros(img_size)
+
+
+def change_suffix(image_name: str, suffix: str):
+    return image_name[:-4] + suffix
 
 
 def open_colour_image(path: Path) -> np.ndarray:

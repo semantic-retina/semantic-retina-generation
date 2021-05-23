@@ -15,6 +15,7 @@ from PIL import Image
 from sklearn.model_selection import train_test_split
 from torch import nn
 from torchvision.transforms import InterpolationMode
+from tqdm import tqdm
 
 from src.data.common import get_label_semantics
 from src.models.resnet.label import load_label_model
@@ -253,7 +254,7 @@ def predict_from_label(model: nn.Module, df: pd.DataFrame) -> np.ndarray:
     )
 
     predictions = np.empty(len(df), dtype=int)
-    for i, row in df.iterrows():
+    for i, row in tqdm(df.iterrows()):
         label = Image.open(row["Label"])
         label = transform(label).unsqueeze(0)
         label = get_label_semantics(label)
@@ -271,7 +272,7 @@ def predict_from_image(model: nn.Module, df: pd.DataFrame) -> np.ndarray:
     rotation = T.RandomRotation(360)
 
     predictions = np.empty(len(df), dtype=int)
-    for i, row in df.iterrows():
+    for i, row in tqdm(df.iterrows()):
         image = Image.open(row["Transformed"])
         image = transform(image).unsqueeze(0) * 255.0
         tta_runs = 5

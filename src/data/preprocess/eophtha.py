@@ -8,6 +8,7 @@ from src.data.preprocess.common import (
     BLACK,
     GRAY_CLASS,
     WHITE,
+    change_suffix,
     fill_contours,
     find_eye,
     open_binary_mask,
@@ -17,13 +18,12 @@ from src.data.preprocess.common import (
     transform,
     write_image,
 )
-from src.data.preprocess.idrid import change_suffix
 from src.utils.sample import colour_labels_numpy
 
 
 def process_image(
-    image_path: Path,
     retina_path: Path,
+    ex_path: Path,
     ma_path: Path,
     od_path: Path,
     label_output_path: Path,
@@ -32,23 +32,31 @@ def process_image(
     img_transformed_output_path: Path,
     colour: bool,
 ):
-    retina_img = open_colour_image(retina_path / image_path)
+    retina_img = open_colour_image(retina_path)
+    image_path = Path(*retina_path.parts[-2:])
 
     height, width, _ = retina_img.shape
+    img_size = (height, width)
 
     contour = find_eye(retina_img)
 
-    ma_label = np.ones((height, width), dtype="uint8") * GRAY_CLASS["MA"]
-    bg_label = np.ones((height, width), dtype="uint8") * GRAY_CLASS["RETINA"]
+    ex_label = np.ones(img_size, dtype="uint8") * GRAY_CLASS["EX"]
+    ma_label = np.ones(img_size, dtype="uint8") * GRAY_CLASS["MA"]
 
-    ma_img = open_binary_mask(ma_path / change_suffix(str(image_path), ".png"))
+    ex_img = open_binary_mask(
+        ex_path / change_suffix(str(image_path), f"_EX.png"), img_size=img_size
+    )
+    ma_img = open_binary_mask(
+        ma_path / change_suffix(str(image_path), f".png"), img_size=img_size
+    )
 
-    mask = np.ones((height, width), dtype="uint8") * WHITE
+    mask = np.ones(img_size, dtype="uint8") * WHITE
 
     fill_contours(mask, [contour], GRAY_CLASS["RETINA"])
+    overlay_label(mask, ex_img, ex_label)
     overlay_label(mask, ma_img, ma_label)
 
-    inst = np.ones((height, width), dtype="uint8") * WHITE
+    inst = np.ones(img_size, dtype="uint8") * WHITE
 
     # Find bounding box.
     x, y, w, h = cv2.boundingRect(contour)
@@ -73,9 +81,11 @@ def process_image(
     new_name = change_suffix(new_name, ".png")
 
     od_img = open_binary_mask(od_path / new_name)
+
     od_label = np.ones((1280, 1280), dtype="uint8") * GRAY_CLASS["OD"]
     overlay_label(mask, od_img, od_label)
 
+    bg_label = np.ones((1280, 1280), dtype="uint8") * GRAY_CLASS["RETINA"]
     overlay_label(inst, od_img, bg_label)
 
     if colour:
@@ -87,7 +97,7 @@ def process_image(
     write_image(transformed_retina_img, img_transformed_output_path / new_name)
 
 
-def preprocess_eophtha_ma(
+def preprocess_eophtha(
     root_dir: str, od_dir: str, output_dir: str, n_workers: int, colour: bool
 ):
     root_path = Path(root_dir)
@@ -107,21 +117,40 @@ def preprocess_eophtha_ma(
     img_transformed_output_path = output_path / "transformed"
     img_transformed_output_path.mkdir(parents=True, exist_ok=True)
 
-    retina_path = root_path / "e_optha_MA" / "MA"
+    retina_path_ex_healthy = root_path / "e_optha_EX" / "healthy"
+    retina_path_ma_healthy = root_path / "e_optha_MA" / "healthy"
+    retina_path_ex = root_path / "e_optha_EX" / "EX"
+    retina_path_ma = root_path / "e_optha_MA" / "MA"
+
+    ex_path = root_path / "e_optha_EX" / "Annotation_EX"
     ma_path = root_path / "e_optha_MA" / "Annotation_MA"
 
     suffixes = [".JPG", ".jpg", ".png", ".PNG"]
-    image_names = [
-        Path(*f.parts[-2:])
-        for f in retina_path.glob("**/*")
+    retina_paths = []
+    # There might be duplicates between e.g. healthy EX and annotation MA, but since
+    # healthy files are processed first they will be overwritten.
+    retina_paths += [
+        f
+        for f in retina_path_ex_healthy.glob("**/*")
         if f.is_file() and f.suffix in suffixes
+    ]
+    retina_paths += [
+        f
+        for f in retina_path_ma_healthy.glob("**/*")
+        if f.is_file() and f.suffix in suffixes
+    ]
+    retina_paths += [
+        f for f in retina_path_ex.glob("**/*") if f.is_file() and f.suffix in suffixes
+    ]
+    retina_paths += [
+        f for f in retina_path_ma.glob("**/*") if f.is_file() and f.suffix in suffixes
     ]
 
     # Worker function that wraps the image processing function.
-    def worker(image_name: str):
+    def worker(retina_path: Path):
         process_image(
-            image_path=image_name,
             retina_path=retina_path,
+            ex_path=ex_path,
             ma_path=ma_path,
             od_path=od_path,
             label_output_path=label_output_path,
@@ -131,5 +160,5 @@ def preprocess_eophtha_ma(
             colour=colour,
         )
 
-    print(f"Preprocessing e-ophtha_MA) with {n_workers} workers...")
-    thread_map(worker, image_names, max_workers=n_workers)
+    print(f"Preprocessing e-ophtha (EX, MA) with {n_workers} workers...")
+    thread_map(worker, retina_paths, max_workers=n_workers)
