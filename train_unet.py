@@ -1,12 +1,13 @@
+import json
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor, optim
+from torch.nn import DataParallel
 from torch.utils.data import ConcatDataset, DataLoader, random_split
-from torch.utils.tensorboard import SummaryWriter
 
 from src.data.common import Labels, get_mask
 from src.data.datasets.combined import CombinedDataset
@@ -16,7 +17,7 @@ from src.models.unet import UNet
 from src.models.unet.transforms import make_transforms
 from src.options.unet.train import get_args
 from src.utils.device import get_device
-from src.utils.string import bold
+from src.utils.seed import set_seed
 
 
 def create_model(load_name: str, n_classes: int) -> nn.Module:
@@ -30,18 +31,20 @@ def create_model(load_name: str, n_classes: int) -> nn.Module:
     return model
 
 
-def evaluate(model: nn.Module, loader: DataLoader, device: torch.device):
+def evaluate(
+    model: nn.Module, loader: DataLoader, device: torch.device, labels: List[Labels]
+):
     model.eval()
 
     total_loss = 0
     n_val = 0
     for batch in loader:
-        images, masks_true = batch["image"], batch["label"]
+        images, masks_true = batch["transformed"], batch["label"]
         images = images.to(device=device, dtype=torch.float32)
 
         n_val += 1
 
-        masks_true = get_mask(Labels.EX, masks_true)
+        masks_true = get_mask(labels[0], masks_true)
         masks_true = masks_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
@@ -59,7 +62,6 @@ def compute_loss(pred: Tensor, target: Tensor) -> Tensor:
 
 
 def train(
-    name: str,
     model: nn.Module,
     device: torch.device,
     epochs: int,
@@ -70,6 +72,7 @@ def train(
     train_loader: DataLoader,
     val_loader: Optional[DataLoader],
     logger: UNetLogger,
+    labels: List[Labels],
 ):
     iteration = 0
 
@@ -81,11 +84,10 @@ def train(
         model.train()
 
         for batch in train_loader:
-            images = batch["image"]
-            masks_true = batch["label"]
+            images, masks_true = batch["transformed"], batch["label"]
 
             images = images.to(device=device, dtype=torch.float32)
-            masks_true = get_mask(Labels.EX, masks_true)
+            masks_true = get_mask(labels[0], masks_true)
             masks_true = masks_true.to(device=device, dtype=torch.long)
 
             masks_pred = model(images)
@@ -103,15 +105,13 @@ def train(
                 logger.log_train(metrics)
 
             if iteration % val_interval == 0 and val_loader is not None:
-                val_loss = evaluate(model, val_loader, device)
+                val_loss = evaluate(model, val_loader, device, labels)
                 metrics = UNetValMetrics(iteration, epoch, val_loss)
                 logger.log_val(metrics)
 
             iteration += 1
 
-    torch.save(model.state_dict(), checkpoint_path / f"{name}.pth")
-
-    writer.close()
+    torch.save(model.state_dict(), checkpoint_path / "model_latest.pth")
 
 
 def make_dataloaders(
@@ -124,6 +124,8 @@ def make_dataloaders(
         image_transform=image_transform,
         label_transform=label_transform,
         joint_transform=joint_transform,
+        return_image=False,
+        return_transformed=True,
         return_grade=False,
     )
 
@@ -181,18 +183,23 @@ def make_dataloaders(
 def main():
     opt = get_args()
     device = get_device()
+    set_seed(opt.seed)
 
     output_path = Path("results") / "unet" / opt.name
     checkpoint_path = output_path / "checkpoints"
     checkpoint_path.mkdir(parents=True, exist_ok=True)
 
-    # Save supplied options for this run.
-    options_file = output_path / f"{opt.name}.txt"
-    with open(options_file, "w") as f:
-        print(opt, file=f)
+    # Save options.
+    with open(output_path / "opt.json", "w") as f:
+        json.dump(vars(opt), f, indent=4)
 
-    n_classes = 9
+    which_labels = sorted([Labels[l] for l in opt.lesions], key=lambda x: x.value)
+    n_classes = len(which_labels)
+    if n_classes == 1:
+        n_classes = 2
+
     model = create_model(opt.load_name, n_classes)
+    model = DataParallel(model)
     model = model.to(device=device)
 
     train_loader, val_loader = make_dataloaders(
@@ -205,21 +212,21 @@ def main():
     print(
         f"""
         Name:            {opt.name}
-        Epochs:          {opt.epochs}
+        Epochs:          {opt.n_epochs}
         Training size:   {n_train}
         Validation size: {n_val}
         Real size:       {opt.n_real}
         Synthetic size:  {opt.n_synthetic}
+        Labels:          {which_labels}
         """
     )
 
-    logger = UNetLogger(opt.name, opt.n_epochs, opt.use_tensorboard)
+    logger = UNetLogger(opt.name, opt.n_epochs, opt.tensorboard)
 
     train(
-        name=opt.name,
         model=model,
-        epochs=opt.epochs,
-        lr=opt.learning_rate,
+        epochs=opt.n_epochs,
+        lr=opt.lr,
         device=device,
         log_interval=opt.log_interval,
         val_interval=opt.val_interval,
@@ -227,6 +234,7 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         logger=logger,
+        labels=which_labels,
     )
 
     logger.close()

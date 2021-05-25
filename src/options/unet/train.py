@@ -9,15 +9,12 @@ def get_args():
     )
     parser.add_argument(
         "--n_epochs",
-        metavar="E",
         type=int,
-        default=50,
+        default=200,
         help="Number of epochs",
-        dest="epochs",
     )
     parser.add_argument(
         "--batch_size",
-        metavar="B",
         type=int,
         nargs="?",
         default=8,
@@ -25,10 +22,9 @@ def get_args():
     )
     parser.add_argument(
         "--lr",
-        metavar="LR",
         type=float,
         nargs="?",
-        default=0.001,
+        default=0.0005,
         help="Learning rate",
     )
     parser.add_argument(
@@ -61,6 +57,11 @@ def get_args():
         help="If specified, loads the model with this name",
     )
     parser.add_argument(
+        "--seed",
+        type=int,
+        default=240,
+    )
+    parser.add_argument(
         "--log_interval",
         type=int,
         default=500,
@@ -70,4 +71,22 @@ def get_args():
         type=int,
         default=1000,
     )
+    parser.add_argument(
+        "--lesions",
+        type=str,
+        nargs="+",
+        default=["RETINA", "OD", "MA", "HE", "EX", "SE"],
+        help="Which lesions to generate, as specified by the `Labels` enum",
+    )
+    parser.add_argument(
+        "--tensorboard",
+        action="store_true",
+        dest="tensorboard",
+    )
+    parser.add_argument(
+        "--notensorboard",
+        action="store_false",
+        dest="tensorboard",
+    )
+    parser.set_defaults(tensorboard=True)
     return parser.parse_args()

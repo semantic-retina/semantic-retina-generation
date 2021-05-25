@@ -15,6 +15,7 @@ from src.utils.device import get_device
 
 def load_model(path: Path) -> nn.Module:
     model = UNet(n_channels=3, n_classes=2)
+    model = nn.DataParallel(model)
     model.load_state_dict(torch.load(path))
     model.eval()
 
@@ -42,7 +43,7 @@ def main():
         image_transform=image_transform,
         label_transform=label_transform,
         joint_transform=joint_transform,
-        mode="test",
+        mode=CombinedDataset.TEST,
     )
     val_loader = DataLoader(
         dataset,
@@ -57,12 +58,12 @@ def main():
     total_recall = 0
     n_val = 0
     for batch in val_loader:
-        images, masks_true = batch["image"], batch["label"]
+        images, masks_true = batch["transformed"], batch["label"]
         images = images.to(device=device, dtype=torch.float32)
 
         n_val += 1
 
-        masks_true = get_mask(Labels.OD, masks_true)
+        masks_true = get_mask(Labels.OD, masks_true).squeeze(1)
         masks_true = masks_true.to(device=device, dtype=torch.long)
 
         with torch.no_grad():
