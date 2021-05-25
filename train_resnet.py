@@ -1,4 +1,5 @@
 """Trains ResNet on DR data."""
+import json
 from pathlib import Path
 
 import torch
@@ -109,9 +110,7 @@ def train(
     feature_extract: bool,
     use_synthetic: bool,
 ) -> nn.Module:
-    transform = T.Compose(
-        [T.Resize(img_size), T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2)]
-    )
+    transform = T.Compose([T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2)])
     train_dataset = HDF5EyePACS(train=True, transform=transform)
 
     # transform = T.Compose(
@@ -177,13 +176,16 @@ def train(
 
 def main():
     opt = get_args()
-    # TODO(sonjoonho): Save options.
 
     if opt.seed > 0:
         set_seed(opt.seed)
 
     output_path = Path("results") / "resnet" / opt.name
     output_path.mkdir(parents=True, exist_ok=True)
+
+    # Save options.
+    with open(output_path / "opt.json", "w") as f:
+        json.dump(vars(opt), f, indent=4)
 
     logger = ResNetLogger(opt.name, opt.n_epochs, opt.tensorboard)
 
