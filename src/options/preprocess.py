@@ -30,7 +30,7 @@ def get_args():
     parser.add_argument(
         "--fgadr_annotation_file",
         type=str,
-        default="data/total.json",
+        default="data/fgadr_od.json",
         help="JSON file containing annotations for the FGADR dataset",
     )
     parser.add_argument(
