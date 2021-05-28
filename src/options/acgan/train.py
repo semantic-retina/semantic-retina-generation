@@ -81,7 +81,7 @@ def get_args():
         "--lesions",
         type=str,
         nargs="+",
-        default=["RETINA", "OD", "MA", "HE", "EX", "SE"],
+        default=["RETINA", "OD", "MA", "HE", "EX", "SE", "NV", "IRMA"],
         help="Which lesions to generate, as specified by the `Labels` enum",
     )
     parser.add_argument(
@@ -126,7 +126,21 @@ def get_args():
         action="store_false",
         dest="use_copypaste",
     )
+    parser.add_argument(
+        "--use_ada",
+        action="store_true",
+        dest="use_ada",
+    )
+    parser.add_argument(
+        "--nouse_ada",
+        action="store_false",
+        dest="use_ada",
+    )
     parser.set_defaults(
-        label_smoothing=True, clip_gradient=True, tensorboard=True, use_copypaste=False
+        label_smoothing=True,
+        clip_gradient=True,
+        tensorboard=True,
+        use_copypaste=False,
+        use_ada=True,
     )
     return parser.parse_args()
