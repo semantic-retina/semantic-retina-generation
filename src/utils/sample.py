@@ -57,7 +57,7 @@ def colour_labels_numpy(image: np.ndarray, reverse_channels: bool = True) -> np.
     """
     Turns a Numpy array representing semantic labels into human-discernible colours.
 
-    :param image: Expects a Numpy array of shape H x W with values in [0, 6].
+    :param image: Expects a Numpy array of shape H x W with values in [0, 9].
     :param reverse_channels: Whether or not to flip the channel order from RGB to BGR.
 
     :returns: A Numpy array of shape H x W x C.
