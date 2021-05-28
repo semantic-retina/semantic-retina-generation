@@ -1,5 +1,4 @@
 """Generates images by randomly sampling."""
-import random
 from pathlib import Path
 
 import cv2
@@ -8,13 +7,12 @@ import torch
 import torchvision.transforms as T
 from torch import Tensor
 from torch.utils.data import DataLoader
-from torchvision.utils import save_image
 from tqdm import tqdm
 
 from src.data.common import Labels, get_label_semantics, infinite
 from src.data.datasets.combined import CombinedDataset
 from src.options.copy_paste import get_args
-from src.utils.sample import colour_labels
+from src.utils.sample import colour_labels_numpy
 from src.utils.seed import set_seed
 
 
@@ -47,51 +45,59 @@ def main():
             T.ToTensor(),
         ]
     )
-    dataset = CombinedDataset(return_image=False, label_transform=transform)
-    dataloader = DataLoader(dataset, batch_size=nc, shuffle=True, drop_last=True)
-    infinite_loader = infinite(dataloader)
 
-    for i in tqdm(range(opt.n_samples)):
-        batch = next(infinite_loader)
-        source_label = batch["label"]
+    samples_per_grade = opt.n_samples // 5
 
-        assert len(source_label) == nc
+    ticker = 0
+    for dr_grade in range(5):
+        dataset = CombinedDataset(
+            return_image=False, return_transformed=False, label_transform=transform
+        )
+        dataset.df = dataset.df[dataset.df["Grade"] == dr_grade]
+        dataloader = DataLoader(dataset, batch_size=nc, shuffle=True, drop_last=True)
+        infinite_loader = infinite(dataloader)
 
-        source_label = get_label_semantics(source_label)
+        for _ in tqdm(range(samples_per_grade)):
+            batch = next(infinite_loader)
+            source_label = batch["label"]
 
-        _, _, height, width = source_label.shape
-        retina = make_circle(height, width)
+            assert len(source_label) == nc
 
-        od = source_label[[1], Labels.OD.value, :, :]
-        ma = source_label[[2], Labels.MA.value, :, :]
-        he = source_label[[3], Labels.HE.value, :, :]
-        ex = source_label[[4], Labels.EX.value, :, :]
-        se = source_label[[5], Labels.SE.value, :, :]
+            source_label = get_label_semantics(source_label)
 
-        retina = retina - od - ma - he - ex - se
+            _, _, height, width = source_label.shape
+            retina = make_circle(height, width)
 
-        # Create background by subtracting everything else.
-        bg = torch.ones_like(retina) - od - ma - he - ex - se - retina
-        bg = torch.clamp(bg, 0, 1)
+            od = source_label[[1], Labels.OD.value, :, :]
+            ma = source_label[[2], Labels.MA.value, :, :]
+            he = source_label[[3], Labels.HE.value, :, :]
+            ex = source_label[[4], Labels.EX.value, :, :]
+            se = source_label[[5], Labels.SE.value, :, :]
+            nv = source_label[[6], Labels.NV.value, :, :]
+            irma = source_label[[7], Labels.IRMA.value, :, :]
 
-        combined = torch.cat([retina, od, ma, he, ex, se, bg], dim=0)
-        # Add singleton batch dimension.
-        combined = combined.unsqueeze(0)
+            retina = retina - od - ma - he - ex - se - nv - irma
 
-        if opt.colour:
-            new_label = colour_labels(combined)
-        else:
-            new_label = torch.argmax(combined, dim=1, keepdim=True).float()
-            # Set background to 255.
-            new_label[new_label == (nc - 1)] = 255.0
-            new_label /= 255.0
+            # Create background by subtracting everything else.
+            bg = torch.ones_like(retina) - od - ma - he - ex - se - nv - irma - retina
+            bg = torch.clamp(bg, 0, 1)
 
-        # TODO(sonjoonho): Generate grade more intelligently. This could be done just by
-        # sampling from existing images with the desired grade.
-        # End-point is inclusive.
-        dr_grade = random.randint(0, 4)
-        filename = f"copypaste_{dr_grade}_{i:05}.png"
-        save_image(new_label, label_path / filename)
+            combined = torch.cat([retina, od, ma, he, ex, se, nv, irma, bg], dim=0)
+            new_label = torch.argmax(combined, dim=0).float().numpy()
+
+            if opt.colour:
+                new_label = colour_labels_numpy(new_label)
+            else:
+                # Set background to 255.
+                new_label[new_label == (nc - 1)] = 255.0
+
+            # TODO(sonjoonho): Generate grade more intelligently. This could be done just by
+            # sampling from existing images with the desired grade.
+            # End-point is inclusive.
+            filename = f"copypaste_{dr_grade}_{ticker:05}.png"
+            cv2.imwrite(str(label_path / filename), new_label)
+
+            ticker += 1
 
 
 if __name__ == "__main__":
