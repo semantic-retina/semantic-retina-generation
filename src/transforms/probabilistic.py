@@ -20,7 +20,7 @@ class ProbabilisticTransform(ABC):
 class Rotate(ProbabilisticTransform):
     """Applies up to 3 90 degree rotations probability p."""
 
-    def __init__(self, p):
+    def __init__(self, p: float):
         assert 0.0 <= p <= 1.0
         self.p = p
 
@@ -32,6 +32,7 @@ class Rotate(ProbabilisticTransform):
             return x
 
         num_rotations = random.randrange(0, 3 + 1)
+        # TODO: set fill background
         x = TF.rotate(x, 90 * num_rotations, fill=0)
         return x
 
