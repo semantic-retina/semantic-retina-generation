@@ -269,21 +269,14 @@ def predict_from_image(model: nn.Module, df: pd.DataFrame) -> np.ndarray:
     """Predicts labels using the specified model."""
     img_size = 512
     transform = T.Compose([T.Resize(img_size), T.ToTensor()])
-    rotation = T.RandomRotation(360)
 
     predictions = np.empty(len(df), dtype=int)
     for i, row in tqdm(df.iterrows(), total=len(df)):
         image = Image.open(row["Transformed"])
         image = transform(image).unsqueeze(0) * 255.0
-        tta_runs = 1
-        tta_preds = torch.empty((tta_runs, 5), dtype=float).cuda()
-        for run in range(tta_runs):
-            transformed_image = rotation(image)
-            with torch.no_grad():
-                output = model(transformed_image)
-            tta_preds[run, :] = output
-        tta_preds = torch.mean(tta_preds, dim=0)
-        pred = torch.argmax(tta_preds)
+        with torch.no_grad():
+            output = model(image)
+        pred = torch.argmax(output)
         predictions[i] = int(pred.item())
 
     return predictions
@@ -305,6 +298,14 @@ def make_absolute_paths(
     return df
 
 
+def get_n_from_source(df):
+    return (
+        f"    FGADR: {len(df[df['Source'] == 'FGADR'])}"
+        f"    IDRiD: {len(df[df['Source'] == 'IDRiD'])}"
+        f"    e-ophtha: {len(df[df['Source'] == 'e-ophtha'])}"
+    )
+
+
 def main():
     opt = get_args()
 
@@ -321,12 +322,6 @@ def main():
         opt.idrid_processed_dir, opt.grade_inference_strategy, opt.grade_inference_model
     )
 
-    # diaretdb1_df = make_diaretdb1(
-    #     opt.diaretdb1_processed_dir,
-    #     opt.grade_inference_strategy,
-    #     opt.grade_inference_model,
-    # )
-
     eophtha_df = make_eophtha(
         opt.eophtha_processed_dir,
         opt.grade_inference_strategy,
@@ -339,19 +334,29 @@ def main():
     combined_df = combined_df.drop("File", axis=1)
 
     combined_train, combined_test = train_test_split(
-        combined_df, train_size=opt.train_size, random_state=opt.seed
+        combined_df, train_size=0.8, random_state=opt.seed
+    )
+
+    combined_test, combined_val = train_test_split(
+        combined_test, train_size=0.5, random_state=opt.seed
     )
 
     print(f"FGADR : {len(fgadr_df)}")
     print(f"IDRiD: {len(idrid_df)}")
-    # print(f"DIARETDB1: {len(diaretdb1_df)}")
     print(f"e-ophtha: {len(eophtha_df)}")
 
     print(f"Train: {len(combined_train)}")
+    print(get_n_from_source(combined_train))
+
+    print(f"Val: {len(combined_val)}")
+    print(get_n_from_source(combined_val))
+
     print(f"Test: {len(combined_test)}")
+    print(get_n_from_source(combined_test))
 
     combined_df.to_csv(data_path / "all.csv")
     combined_train.to_csv(data_path / "train.csv")
+    combined_val.to_csv(data_path / "train.csv")
     combined_test.to_csv(data_path / "test.csv")
 
 
