@@ -14,5 +14,7 @@ def get_args():
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--tensorboard", action="store_true", dest="tensorboard")
     parser.add_argument("--notensorboard", action="store_false", dest="tensorboard")
-    parser.set_defaults(tensorboard=True)
+    parser.add_argument("--use_hdf5", action="store_true", dest="use_hdf5")
+    parser.add_argument("--nouse_hdf5", action="store_false", dest="use_hdf5")
+    parser.set_defaults(tensorboard=True, use_hdf5=True)
     return parser.parse_args()
