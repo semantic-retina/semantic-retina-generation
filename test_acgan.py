@@ -3,15 +3,16 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Tuple
 
+import cv2
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
-from torchvision.utils import save_image
 
 from src.data.common import Labels
 from src.models.acgan.generator import Generator
 from src.options.acgan.test import get_args
-from src.utils.sample import colour_labels
+from src.utils.sample import colour_labels_flat
 from src.utils.seed import set_seed
 
 
@@ -44,13 +45,14 @@ def main():
     which_labels = sorted([Labels[l] for l in opt_train.lesions], key=lambda x: x.value)
     n_channels = len(which_labels) + 1
 
-    out_path = Path("results") / "acgan" / opt.name / "test"
+    out_path = Path(opt.out_dir) / "acgan" / opt.name / "test"
     label_out_path = out_path / "label"
     inst_out_path = out_path / "inst"
     label_out_path.mkdir(exist_ok=True, parents=True)
     inst_out_path.mkdir(exist_ok=True, parents=True)
 
-    set_seed(opt.seed)
+    if opt.seed > -1:
+        set_seed(opt.seed)
 
     device = torch.device("cuda")
 
@@ -74,6 +76,7 @@ def main():
 
     print(f"Batch sizes: {batch_sizes}")
 
+    total_idx = 0
     for i, bs in enumerate(batch_sizes):
         z = torch.randn((bs, opt_train.latent_dim), device=device)
         # gen_label = torch.tensor([dr_grade], device=device)
@@ -100,21 +103,49 @@ def main():
         # At this point, `labels` contains values in the range [0, 255]. Pytorch's
         # `save_image` function expects values between [0, 1]. `colour_labels` does this
         # scaling for us, otherwise we do it here.
+
+        labels = torch.argmax(labels, dim=1, keepdim=True).float()
+
+        if opt.mask_retina:
+            _, height, width = labels[0].shape
+            image = Labels.BG.value * np.ones((height, width))
+            center = (height // 2, width // 2)
+            radius = height // 2 - 1
+            colour = Labels.RETINA.value
+            circle = cv2.circle(image, center, radius, colour, thickness=cv2.FILLED)
+            circle_tensor = torch.from_numpy(circle)
+            circle_tensor = circle_tensor.to(device).float()
+            labels = torch.where(labels == Labels.RETINA.value, circle_tensor, labels)
+            labels = torch.where(labels == Labels.BG.value, circle_tensor, labels)
+
         if opt.colour:
-            labels = colour_labels(labels)
+            labels = colour_labels_flat(labels) * 255.0
         else:
-            labels /= 255.0
+            labels[labels == Labels.BG.value] = 255
+
+        # We permute instead of squeezing since the labels may have colour channels.
+        labels = labels.permute(0, 2, 3, 1).cpu().numpy()
+        inst = inst.permute(0, 2, 3, 1).cpu().numpy()
 
         for j in range(bs):
-            total_idx = i * bs + j
+            total_idx += 1
             dr_grade = gen_label[j].item()
             # Save as PNG to avoid compression artifacts.
             filename = f"test_{dr_grade}_{total_idx:05}.png"
             label_path = str(out_path / "label" / filename)
-            save_image(labels[j], label_path)
+
+            if opt.colour:
+                label = cv2.cvtColor(labels[j], cv2.COLOR_BGR2RGB)
+            else:
+                label = labels[j]
+
+            cv2.imwrite(label_path, label)
 
             inst_path = str(out_path / "inst" / filename)
-            save_image(inst[j], inst_path)
+            cv2.imwrite(
+                inst_path,
+                inst[j],
+            )
 
         print(f"Generated images of shape {labels.shape}")
 
