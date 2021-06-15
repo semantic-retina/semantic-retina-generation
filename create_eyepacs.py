@@ -4,7 +4,6 @@ import cv2
 import h5py
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from tqdm.contrib.concurrent import thread_map
 
 from src.data.preprocess.common import BLACK, find_eye, open_colour_image, pad_to_square
@@ -64,34 +63,26 @@ def process_df(df, f, group_name):
 
 
 def main():
-    # path = Path("data") / "hdf5"
     path = Path("/data/js6317") / "hdf5"
     path.mkdir(parents=True, exist_ok=True)
     file_path = path / "eyepacs.hdf5"
 
-    data_path = Path("/vol/biomedic/users/aa16914/shared/data/retina/eyepacs")
+    data_path = Path("data/eyepacs")
 
     f = h5py.File(file_path, "w", libver="latest")
 
     # CSV columns are: "PatientId, name, eye, level, level_binary,
     # level_hot, path, path_preprocess, exists".
-    train_df_1_path = data_path / "train_all_df.csv"
-    train_df_1 = pd.read_csv(train_df_1_path)
+    train_df_path = data_path / "train.csv"
+    train_df = pd.read_csv(train_df_path)
 
-    train_df_2_path = data_path / "test_public_df.csv"
-    train_df_2 = pd.read_csv(train_df_2_path)
-
-    test_df_path = data_path / "test_private_df.csv"
+    test_df_path = data_path / "test.csv"
     test_df = pd.read_csv(test_df_path)
 
-    combined_df = pd.concat([train_df_1, train_df_2, test_df])
-
-    train, test = train_test_split(combined_df, train_size=0.8, random_state=42)
-    print(len(train))
-    print(len(test))
-    process_df(train, f, "train")
-
-    process_df(test, f, "test")
+    print("Train:", len(train_df))
+    print("Test:", len(test_df))
+    process_df(train_df, f, "train")
+    process_df(test_df, f, "test")
 
     f.close()
 

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Tuple
 
 import h5py
+import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
@@ -44,7 +45,7 @@ class HDF5EyePACS(Dataset):
 
         grade = int(grade)
 
-        return {"image": image, "grade": grade}
+        return {"transformed": image, "grade": grade}
 
 
 class EyePACS(Dataset):
@@ -53,9 +54,14 @@ class EyePACS(Dataset):
     Note that image sizes vary, so a short-edge crop may be required.
     """
 
-    root_dir = "/vol/biomedic/users/aa16914/shared/data/retina/eyepacs"
+    root_dir = "/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/eyepacs/"
 
-    def __init__(self, train: bool = True, transform: T.Compose = None):
+    def __init__(
+        self,
+        train: bool = True,
+        transform: T.Compose = None,
+        indices: np.ndarray = None,
+    ):
         self.transform = transform
 
         # TODO(sonjoonho): Remove hardcoded path.
@@ -64,11 +70,14 @@ class EyePACS(Dataset):
         # CSV columns are: "PatientId, name, eye, level, level_binary,
         # level_hot, path, path_preprocess, exists".
         if train:
-            df_path = data_path / "train_all_df.csv"
+            df_path = data_path / "train.csv"
         else:
-            df_path = data_path / "test_public_df.csv"
+            df_path = data_path / "test.csv"
 
         self.df = pd.read_csv(df_path)
+
+        if indices is not None:
+            self.df = self.df.iloc[indices]
 
     def __len__(self) -> int:
         return len(self.df)
