@@ -44,7 +44,7 @@ class CombinedDataset(Dataset):
         if mode == CombinedDataset.TRAIN:
             csv_path = root_path / "train.csv"
         elif mode == CombinedDataset.VALIDATION:
-            csv_path = root_path / "validation.csv"
+            csv_path = root_path / "val.csv"
         elif mode == CombinedDataset.TEST:
             csv_path = root_path / "test.csv"
         elif mode == CombinedDataset.ALL:
