@@ -4,6 +4,11 @@ import argparse
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--out_dir",
+        type=str,
+        default="results/",
+    )
+    parser.add_argument(
         "--img_size",
         type=int,
         default=512,

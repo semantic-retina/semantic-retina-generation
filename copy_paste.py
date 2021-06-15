@@ -28,15 +28,17 @@ def make_circle(height: int, width: int) -> Tensor:
 
 
 def main():
-    out_dir = "data/"
-
     opt = get_args()
 
-    out_path = Path(out_dir) / "copypaste"
+    out_path = Path(opt.out_dir) / "copypaste"
     label_path = out_path / "label"
     label_path.mkdir(parents=True, exist_ok=True)
+    inst_path = out_path / "inst"
+    inst_path.mkdir(parents=True, exist_ok=True)
 
-    set_seed(opt.seed)
+    if opt.seed > -1:
+        set_seed(opt.seed)
+
     nc = 8 + 1
 
     transform = T.Compose(
@@ -51,7 +53,9 @@ def main():
     ticker = 0
     for dr_grade in range(5):
         dataset = CombinedDataset(
-            return_image=False, return_transformed=False, label_transform=transform
+            return_image=False,
+            return_transformed=False,
+            label_transform=transform,
         )
         dataset.df = dataset.df[dataset.df["Grade"] == dr_grade]
         dataloader = DataLoader(dataset, batch_size=nc, shuffle=True, drop_last=True)
@@ -96,6 +100,12 @@ def main():
             # End-point is inclusive.
             filename = f"copypaste_{dr_grade}_{ticker:05}.png"
             cv2.imwrite(str(label_path / filename), new_label)
+
+            inst = od.squeeze().numpy()
+            inst = np.ones_like(inst) - inst
+            inst *= 255.0
+
+            cv2.imwrite(str(inst_path / filename), inst)
 
             ticker += 1
 
