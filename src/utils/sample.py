@@ -62,7 +62,7 @@ def colour_labels_numpy(image: np.ndarray, reverse_channels: bool = True) -> np.
 
     :returns: A Numpy array of shape H x W x C.
     """
-    assert image.ndim == 2, f"Expected image ot have 2 dimensions, got {image.ndim}"
+    assert image.ndim == 2, f"Expected image to have 2 dimensions, got {image.ndim}"
 
     height, width = image.shape
     coloured = np.zeros((height, width, 3))
