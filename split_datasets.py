@@ -67,6 +67,45 @@ def make_fgadr(
     return fgadr_df
 
 
+def make_fgadr_grade(fgadr_df: pd.DataFrame) -> pd.DataFrame:
+    return fgadr_df[["Image", "Transformed", "Grade", "Source"]]
+
+
+def make_idrid_grade(original_dir: str, processed_dir: str) -> pd.DataFrame:
+    original_path = Path(original_dir)
+    idrid_root_path = Path(processed_dir)
+
+    idrid_image_path = idrid_root_path / "img"
+    idrid_transform_path = idrid_root_path / "transformed"
+
+    idrid_df_1 = pd.read_csv(
+        original_path
+        / "2. Groundtruths"
+        / "a. IDRiD_Disease Grading_Training Labels.csv"
+    )
+    idrid_df_2 = pd.read_csv(
+        original_path
+        / "2. Groundtruths"
+        / "b. IDRiD_Disease Grading_Testing Labels.csv"
+    )
+
+    idrid_df = pd.concat((idrid_df_1, idrid_df_2))
+    idrid_df = idrid_df[["Image name", "Retinopathy grade"]]
+    idrid_df = idrid_df.rename(
+        columns={"Image name": "File", "Retinopathy grade": "Grade"}
+    )
+
+    idrid_df["File"] = idrid_df["File"].astype(str) + ".png"
+    idrid_df["Image"] = str(idrid_image_path) + "/" + idrid_df["File"].astype(str)
+    idrid_df["Transformed"] = (
+        str(idrid_transform_path) + "/" + idrid_df["File"].astype(str)
+    )
+
+    idrid_df["Source"] = "IDRiD"
+
+    return idrid_df
+
+
 def make_idrid(
     processed_dir: str,
     grade_inference_strategy: Optional[str],
@@ -356,8 +395,76 @@ def main():
 
     combined_df.to_csv(data_path / "all.csv")
     combined_train.to_csv(data_path / "train.csv")
-    combined_val.to_csv(data_path / "train.csv")
+    combined_val.to_csv(data_path / "val.csv")
     combined_test.to_csv(data_path / "test.csv")
+
+    eyepacs_path = Path("/vol/biomedic/users/aa16914/shared/data/retina/eyepacs")
+    eyepacs_out_path = data_path / "eyepacs"
+    eyepacs_out_path.mkdir(parents=True, exist_ok=True)
+
+    eyepacs_path_1 = eyepacs_path / "train_all_df.csv"
+    eyepacs_path_2 = eyepacs_path / "test_private_df.csv"
+    eyepacs_path_3 = eyepacs_path / "test_public_df.csv"
+
+    eyepacs_df_1 = pd.read_csv(eyepacs_path_1)
+    eyepacs_df_2 = pd.read_csv(eyepacs_path_2)
+    eyepacs_df_3 = pd.read_csv(eyepacs_path_3)
+
+    eyepacs_df = pd.concat((eyepacs_df_1, eyepacs_df_2, eyepacs_df_3))
+
+    eyepacs_train, eyepacs_test = train_test_split(
+        eyepacs_df, train_size=0.8, random_state=opt.seed
+    )
+
+    eyepacs_train.to_csv(eyepacs_out_path / "train.csv")
+    eyepacs_test.to_csv(eyepacs_out_path / "test.csv")
+
+    grade_out_path = data_path / "grade"
+    grade_out_path.mkdir(parents=True, exist_ok=True)
+
+    idrid_grade_df = make_idrid_grade(
+        opt.idrid_grade_original_dir, opt.idrid_grade_processed_dir
+    )
+
+    fgadr_train_grade_df = make_fgadr_grade(
+        combined_train[combined_train["Source"] == "FGADR"]
+    )
+    fgadr_val_grade_df = make_fgadr_grade(
+        combined_val[combined_val["Source"] == "FGADR"]
+    )
+    fgadr_test_grade_df = make_fgadr_grade(
+        combined_test[combined_test["Source"] == "FGADR"]
+    )
+
+    idrid_grade_train, idrid_grade_test = train_test_split(
+        idrid_grade_df, train_size=0.8, random_state=opt.seed
+    )
+
+    idrid_grade_test, idrid_grade_val = train_test_split(
+        idrid_grade_test, train_size=0.5, random_state=opt.seed
+    )
+
+    grade_train = pd.concat((idrid_grade_train, fgadr_train_grade_df))
+    grade_val = pd.concat((idrid_grade_val, fgadr_val_grade_df))
+    grade_test = pd.concat((idrid_grade_test, fgadr_test_grade_df))
+    grade_df = pd.concat((grade_train, grade_val, grade_test))
+
+    grade_df.to_csv(grade_out_path / "all.csv")
+    grade_train.to_csv(grade_out_path / "train.csv")
+    grade_val.to_csv(grade_out_path / "val.csv")
+    grade_test.to_csv(grade_out_path / "test.csv")
+
+    print(f"FGADR (Grade) : {len(fgadr_df)}")
+    print(f"IDRiD (Grade): {len(idrid_grade_df)}")
+
+    print(f"Train: {len(grade_train)}")
+    print(get_n_from_source(grade_train))
+
+    print(f"Val: {len(grade_val)}")
+    print(get_n_from_source(grade_val))
+
+    print(f"Test: {len(grade_test)}")
+    print(get_n_from_source(grade_test))
 
 
 if __name__ == "__main__":

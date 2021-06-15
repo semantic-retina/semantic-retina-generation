@@ -24,6 +24,7 @@ from src.data.preprocess.diaretdb import preprocess_diaretdb1
 from src.data.preprocess.eophtha import preprocess_eophtha
 from src.data.preprocess.fgadr import preprocess_fgadr
 from src.data.preprocess.idrid import preprocess_idrid
+from src.data.preprocess.idrid_grade import preprocess_idrid_grade
 from src.options.preprocess import get_args
 
 
@@ -43,6 +44,19 @@ def main():
             opt.n_workers,
             False,
             opt.colour,
+        )
+    if opt.idrid_grade:
+        preprocess_idrid_grade(
+            opt.idrid_grade_root_dir,
+            opt.output_dir,
+            opt.n_workers,
+            True,
+        )
+        preprocess_idrid_grade(
+            opt.idrid_grade_root_dir,
+            opt.output_dir,
+            opt.n_workers,
+            False,
         )
     if opt.fgadr:
         preprocess_fgadr(
@@ -68,7 +82,6 @@ def main():
             opt.n_workers,
             opt.colour,
         )
-        # preprocess_eophtha_healthy()
 
 
 if __name__ == "__main__":

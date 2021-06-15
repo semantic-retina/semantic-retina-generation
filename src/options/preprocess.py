@@ -10,6 +10,12 @@ def get_args():
         help="Path to the IDRiD dataset",
     )
     parser.add_argument(
+        "--idrid_grade_root_dir",
+        type=str,
+        default="/vol/bitbucket/js6317/individual-project/data/idrid_grade/B. Disease Grading",
+        help="Path to the IDRiD dataset",
+    )
+    parser.add_argument(
         "--fgadr_root_dir",
         type=str,
         default="/vol/vipdata/data/retina/FGADR-Seg/Seg-set",
@@ -106,8 +112,23 @@ def get_args():
         action="store_false",
         dest="eophtha",
     )
+    parser.add_argument(
+        "--idrid_grade",
+        action="store_true",
+        dest="idrid_grade",
+    )
+    parser.add_argument(
+        "--noidrid_grade",
+        action="store_false",
+        dest="idrid_grade",
+    )
     parser.set_defaults(
-        colour=False, fgadr=True, idrid=True, diaretdb1=True, eophtha=True
+        colour=False,
+        fgadr=True,
+        idrid=True,
+        diaretdb1=False,
+        idrid_grade=True,
+        eophtha=True,
     )
 
     return parser.parse_args()

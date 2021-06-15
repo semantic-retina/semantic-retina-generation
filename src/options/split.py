@@ -19,6 +19,16 @@ def get_args():
         default="/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/idrid/",
     )
     parser.add_argument(
+        "--idrid_grade_original_dir",
+        type=str,
+        default="/vol/bitbucket/js6317/individual-project/data/idrid_grade/B. Disease Grading/",
+    )
+    parser.add_argument(
+        "--idrid_grade_processed_dir",
+        type=str,
+        default="/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/idrid_grade/",
+    )
+    parser.add_argument(
         "--diaretdb1_processed_dir",
         type=str,
         default="/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/diaretdb1/",
@@ -27,11 +37,6 @@ def get_args():
         "--eophtha_processed_dir",
         type=str,
         default="/vol/bitbucket/js6317/individual-project/semantic-dr-gan/data/eophtha/",
-    )
-    parser.add_argument(
-        "--train_size",
-        type=float,
-        default=0.8,
     )
     parser.add_argument(
         "--seed",
