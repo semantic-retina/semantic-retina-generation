@@ -7,11 +7,12 @@ from torch import nn, optim
 from torch.utils.data import ConcatDataset, DataLoader
 from torchvision import transforms as T
 
-from src.data.datasets.eyepacs import HDF5EyePACS
+from src.data.datasets.copy_paste import CopyPasteDataset
+from src.data.datasets.grading import GradingDataset
 from src.data.datasets.synthetic import SyntheticDataset
 from src.logger.resnet import ResNetLogger, ResNetTrainMetrics, ResNetValidateMetrics
 from src.models.resnet import get_params_to_update
-from src.models.resnet.retina import create_retina_model
+from src.models.resnet.retina import create_small_retina_model
 from src.options.resnet.train import get_args
 from src.utils.device import get_device
 from src.utils.seed import set_seed
@@ -36,7 +37,7 @@ def train_step(
 
         iteration = epoch * n_batches + batch_idx
 
-        images, grades = batch["image"], batch["grade"]
+        images, grades = batch["transformed"], batch["grade"]
 
         images = images.to(device)
         grades = grades.to(device)
@@ -68,13 +69,16 @@ def validate(
     device: torch.device,
     logger: ResNetLogger,
 ):
+    if val_loader is None:
+        return
+
     model.eval()
     n_val_samples = 0
     val_loss = 0.0
     val_corrects = 0.0
 
     for batch in val_loader:
-        images, grades = batch["image"], batch["grade"]
+        images, grades = batch["transformed"], batch["grade"]
 
         images = images.to(device)
         grades = grades.to(device)
@@ -108,49 +112,84 @@ def train(
     logger: ResNetLogger,
     device: torch.device,
     feature_extract: bool,
-    use_synthetic: bool,
+    use_hdf5: bool,
+    synthetic_name: str,
+    n_synthetic: int,
+    use_real: bool,
 ) -> nn.Module:
-    transform = T.Compose([T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2)])
-    train_dataset = HDF5EyePACS(train=True, transform=transform)
 
-    # transform = T.Compose(
-    #     [T.Resize(img_size, interpolation=InterpolationMode.NEAREST), T.ToTensor()]
-    # )
-    # train_dataset = CombinedDataset(common_transform=transform)
-    # train_dataset.df = train_dataset.df[train_dataset.df["Source"] == "FGADR"]
-    # class_proportions = [73.5, 7.0, 15.1, 2.5, 2.0]
-    # num_samples = len(train_dataset)
-    # class_weights = torch.tensor([num_samples / c for c in class_proportions]).to(
-    #     device
-    # )
-    # print(class_weights)
-    # weights = [class_weights[i] for i in train_dataset.grades]
-    # sampler = WeightedRandomSampler(weights=weights, num_samples=len(train_dataset))
+    # if use_hdf5:
+    #     EyePACSDataset = HDF5EyePACS
+    #     transform = T.Compose([T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2)])
+    # else:
+    #     EyePACSDataset = EyePACS
+    #     transform = T.Compose(
+    #         [
+    #             CropShortEdge(),
+    #             T.Resize(512),
+    #             T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2),
+    #             T.ToTensor(),
+    #         ]
+    #     )
+    #
+    # if use_real:
+    #     real_dataset = EyePACSDataset(train=True, transform=transform)
+    # else:
+    #     real_dataset = None
+    transform = T.Compose([T.Resize(512), T.ToTensor()])
+    real_dataset = GradingDataset(image_transform=transform, mode=GradingDataset.TRAIN)
 
-    if use_synthetic:
-        synthetic_dataset = SyntheticDataset(
-            image_transform=transform, return_label=False, return_inst=False
+    if synthetic_name:
+        transform = T.Compose(
+            [T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2), T.ToTensor()]
         )
-        train_dataset = ConcatDataset((train_dataset, synthetic_dataset))
+        if synthetic_name == "copypaste":
+            synthetic_dataset = CopyPasteDataset(
+                image_transform=transform,
+                return_label=False,
+                n_samples=n_synthetic,
+            )
+        else:
+            synthetic_dataset = SyntheticDataset(
+                synthetic_name,
+                image_transform=transform,
+                return_label=False,
+                return_inst=False,
+                return_image=False,
+                n_samples=n_synthetic,
+            )
+    else:
+        synthetic_dataset = None
+
+    if real_dataset is not None and synthetic_dataset is not None:
+        train_dataset = ConcatDataset((real_dataset, synthetic_dataset))
+    elif real_dataset is not None and synthetic_dataset is None:
+        train_dataset = real_dataset
+    elif real_dataset is None and synthetic_dataset is not None:
+        train_dataset = synthetic_dataset
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
-        num_workers=8,
+        num_workers=4,
         pin_memory=True,
-        shuffle=True
-        # sampler=sampler,
+        shuffle=True,
     )
 
-    val_dataset = HDF5EyePACS(train=False, transform=transform)
-    # val_dataset = CombinedDataset(common_transform=transform, mode=CombinedDataset.TEST)
-    # val_dataset.df = val_dataset.df[val_dataset.df["Source"] == "FGADR"]
+    # Disable validation for now (:
+    # transform = T.Compose([T.RandomAffine(360, translate=(0.1, 0.1), shear=0.2)])
+    # val_dataset = EyePACSDataset(train=False, transform=transform)
+    transform = T.Compose([T.Resize(512), T.ToTensor()])
+    val_dataset = GradingDataset(
+        image_transform=transform, mode=GradingDataset.VALIDATION
+    )
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
-        num_workers=8,
+        num_workers=4,
         pin_memory=True,
-        shuffle=False,
+        shuffle=True,
     )
 
     params_to_update = get_params_to_update(model, feature_extract)
@@ -158,6 +197,12 @@ def train(
 
     # eyepacs_weight = torch.tensor([1.0, 10.5, 4.87, 29.4, 36.75]).to(device)
     criterion = nn.CrossEntropyLoss()
+
+    print(
+        f"""
+    Training size: {len(train_dataset)}
+    """
+    )
 
     for epoch in range(num_epochs):
         train_step(
@@ -194,9 +239,9 @@ def main():
     n_classes = 5
 
     # Freeze layers if we're only using it for feature extraction.
-    device = get_device()
-    model = create_retina_model(use_pretrained, feature_extract, n_classes)
-    model = nn.DataParallel(model)
+    model = create_small_retina_model(
+        use_pretrained, feature_extract, n_classes, load_name=opt.load_name
+    )
     model = model.to(device)
 
     train(
@@ -210,13 +255,18 @@ def main():
         logger=logger,
         device=device,
         feature_extract=feature_extract,
-        use_synthetic=opt.use_synthetic,
+        use_hdf5=opt.use_hdf5,
+        synthetic_name=opt.synthetic_name,
+        n_synthetic=opt.n_synthetic,
+        use_real=opt.use_real,
     )
 
     checkpoint_path = output_path / "checkpoints"
     checkpoint_path.mkdir(parents=True, exist_ok=True)
 
     torch.save(model.state_dict(), checkpoint_path / "model_latest.pth")
+
+    print("Finished!")
 
 
 if __name__ == "__main__":
