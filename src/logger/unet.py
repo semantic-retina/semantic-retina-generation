@@ -1,11 +1,11 @@
 import sys
 from dataclasses import dataclass
 
-import torch
 from torch import Tensor
 from torch.utils.tensorboard import SummaryWriter
 
 from src.logger.common import timestamp
+from src.utils.sample import colour_labels
 from src.utils.string import bold
 
 
@@ -41,10 +41,12 @@ class UNetLogger:
             writer.add_scalar("Loss/Training", m.loss, m.step)
 
             writer.add_images("Images", m.images, m.step)
-            writer.add_images("Masks/true", m.masks_true, m.step, dataformats="NCHW")
+            writer.add_images(
+                "Masks/true", colour_labels(m.masks_true), m.step, dataformats="NCHW"
+            )
             writer.add_images(
                 "Masks/pred",
-                torch.argmax(m.masks_pred, dim=1, keepdim=True),
+                colour_labels(m.masks_pred),
                 m.step,
                 dataformats="NCHW",
             )

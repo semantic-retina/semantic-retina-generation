@@ -40,6 +40,11 @@ def get_args():
         help="How many synthetic samples to use",
     )
     parser.add_argument(
+        "--synthetic_name",
+        type=str,
+        default="",
+    )
+    parser.add_argument(
         "--n_real",
         type=int,
         default=-1,
@@ -75,7 +80,7 @@ def get_args():
         "--lesions",
         type=str,
         nargs="+",
-        default=["RETINA", "OD", "MA", "HE", "EX", "SE"],
+        default=["MA", "HE", "EX", "SE", "IRMA", "NV"],
         help="Which lesions to generate, as specified by the `Labels` enum",
     )
     parser.add_argument(
@@ -88,5 +93,7 @@ def get_args():
         action="store_false",
         dest="tensorboard",
     )
-    parser.set_defaults(tensorboard=True)
+    parser.add_argument("--use_real", action="store_true", dest="use_real")
+    parser.add_argument("--nouse_real", action="store_false", dest="use_real")
+    parser.set_defaults(tensorboard=True, use_real=True)
     return parser.parse_args()
