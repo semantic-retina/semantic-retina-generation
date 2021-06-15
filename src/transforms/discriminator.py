@@ -22,6 +22,9 @@ class DiscriminatorTransform:
         self.p = 0.0
 
     def __call__(self, images: Tensor) -> Tensor:
+        if not self.transforms:
+            return images
+
         batch_size, _, _, _ = images.shape
         transformed_images = torch.empty_like(images)
         for i in range(batch_size):
