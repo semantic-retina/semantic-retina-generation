@@ -221,8 +221,12 @@ def train(
 
 def main():
     opt = get_args()
+    print(opt)
 
-    if opt.seed > 0:
+    device = get_device()
+    print("Device count", torch.cuda.device_count())
+
+    if opt.seed > -1:
         set_seed(opt.seed)
 
     output_path = Path("results") / "resnet" / opt.name

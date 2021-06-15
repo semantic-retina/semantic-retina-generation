@@ -3,13 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from sklearn.metrics import (
-    accuracy_score,
-    cohen_kappa_score,
-    f1_score,
-    precision_score,
-    recall_score,
-)
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.data import DataLoader
 from torchvision import transforms as T
 from tqdm import tqdm
@@ -20,7 +14,7 @@ from src.data.datasets.grading import GradingDataset
 from src.data.datasets.synthetic import SyntheticDataset
 from src.logger.common import timestamp
 from src.metrics.kappa import quadratic_kappa
-from src.models.resnet.retina import load_retina_model, load_small_retina_model
+from src.models.resnet.retina import load_small_retina_model
 from src.options.resnet.test import get_args
 from src.utils.device import get_device
 
@@ -37,7 +31,9 @@ def main():
 
     device = get_device()
 
-    model_path = Path(opt.out_dir) / "resnet" / name / "checkpoints" / "model_latest.pth"
+    model_path = (
+        Path(opt.out_dir) / "resnet" / name / "checkpoints" / "model_latest.pth"
+    )
     model = load_small_retina_model(model_path)
     model = model.to(device)
 
