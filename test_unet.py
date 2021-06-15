@@ -1,50 +1,61 @@
-from argparse import ArgumentParser
-from pathlib import Path
-
 import torch
-from torch import nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from torchvision.utils import save_image
+from tqdm import tqdm
 
-from src.data.common import Labels, get_mask
+from src.data.common import Labels, get_labels
 from src.data.datasets.combined import CombinedDataset
+from src.data.datasets.copy_paste import CopyPasteDataset
+from src.data.datasets.synthetic import SyntheticDataset
 from src.metrics.dice import compute_precision_recall_f1
-from src.models.unet import UNet
+from src.models.unet.common import create_model
 from src.models.unet.transforms import make_transforms
+from src.options.unet.test import get_args
 from src.utils.device import get_device
-
-
-def load_model(path: Path) -> nn.Module:
-    model = UNet(n_channels=3, n_classes=2)
-    model = nn.DataParallel(model)
-    model.load_state_dict(torch.load(path))
-    model.eval()
-
-    return model
+from src.utils.sample import colour_labels_flat
 
 
 def main():
-    parser = ArgumentParser()
-    parser.add_argument("name", type=str)
-    opt = parser.parse_args()
-
-    model_path = Path(f"results/unet/{opt.name}/checkpoints/model_latest.pth")
+    opt = get_args()
 
     img_size = 512
     batch_size = 1
 
     device = get_device()
 
-    model = load_model(model_path)
+    which_labels = sorted([Labels[l] for l in opt.lesions], key=lambda x: x.value)
+    n_classes = len(which_labels) + 1
+
+    model = create_model(opt.name, n_classes)
+    model.eval()
     model.to(device)
 
-    image_transform, label_transform, joint_transform = make_transforms(img_size)
+    image_transform, label_transform, _ = make_transforms(img_size)
 
-    dataset = CombinedDataset(
-        image_transform=image_transform,
-        label_transform=label_transform,
-        joint_transform=joint_transform,
-        mode=CombinedDataset.TEST,
-    )
+    if opt.dataset == "test":
+        dataset = CombinedDataset(
+            image_transform=image_transform,
+            label_transform=label_transform,
+            mode=CombinedDataset.TEST,
+        )
+    elif opt.dataset == "val":
+        dataset = CombinedDataset(
+            image_transform=image_transform,
+            label_transform=label_transform,
+            mode=CombinedDataset.VALIDATION,
+        )
+    elif opt.dataset == "copypaste":
+        dataset = CopyPasteDataset(
+            image_transform=image_transform, label_transform=label_transform
+        )
+    else:
+        dataset = SyntheticDataset(
+            name=opt.dataset,
+            image_transform=image_transform,
+            label_transform=label_transform,
+        )
+
     val_loader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -57,18 +68,28 @@ def main():
     total_precision = 0
     total_recall = 0
     n_val = 0
-    for batch in val_loader:
+    for batch in tqdm(val_loader):
         images, masks_true = batch["transformed"], batch["label"]
         images = images.to(device=device, dtype=torch.float32)
 
         n_val += 1
 
-        masks_true = get_mask(Labels.OD, masks_true).squeeze(1)
-        masks_true = masks_true.to(device=device, dtype=torch.long)
+        masks_true = get_labels(which_labels, masks_true)[:, :-1, :, :]
+
+        masks_true = masks_true.to(device=device, dtype=torch.float)
+
+        masks_true = torch.argmax(masks_true, dim=1, keepdim=True)
 
         with torch.no_grad():
-            masks_pred = model(images)
-        masks_pred = torch.argmax(masks_pred, dim=1)
+            masks_pred = model(images)[:, :, :, :]
+
+        masks_pred = F.softmax(masks_pred, dim=1)
+        masks_pred = (masks_pred > 0.5).float()[:, :-1, :, :]
+        masks_pred = torch.argmax(masks_pred, dim=1, keepdim=True)
+
+        save_image(colour_labels_flat(masks_pred), "pred.png")
+        save_image(colour_labels_flat(masks_true), "true.png")
+
         batch_precision, batch_recall, batch_f1 = compute_precision_recall_f1(
             masks_pred, masks_true
         )
@@ -81,9 +102,10 @@ def main():
     precision = total_precision / n_val
     recall = total_recall / n_val
     print(opt.name)
-    print(f"Dice: {dice}")
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
+    print(f"Dice: {dice}")
+    print(f"N Val {n_val}")
 
 
 if __name__ == "__main__":
