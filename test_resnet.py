@@ -14,37 +14,59 @@ from torch.utils.data import DataLoader
 from torchvision import transforms as T
 from tqdm import tqdm
 
+from src.data.datasets.copy_paste import CopyPasteDataset
 from src.data.datasets.eyepacs import HDF5EyePACS
+from src.data.datasets.grading import GradingDataset
+from src.data.datasets.synthetic import SyntheticDataset
 from src.logger.common import timestamp
-from src.models.resnet.retina import load_retina_model
+from src.metrics.kappa import quadratic_kappa
+from src.models.resnet.retina import load_retina_model, load_small_retina_model
 from src.options.resnet.test import get_args
 from src.utils.device import get_device
 
 
-def quadratic_kappa(actual, predicted):
-    return cohen_kappa_score(predicted, actual, weights="quadratic")
-
-
 def main():
-    # TODO(sonjoonho): Add argument parsing for options.
-
-    name = "eyepacs_transformed"
-    out_dir = "results/"
     img_size = 512
     batch_size = 64
 
     opt = get_args()
+    name = opt.name
 
     output_path = Path(opt.out_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
     device = get_device()
 
-    model_path = Path(out_dir) / "resnet" / name / "checkpoints" / "model_latest.pth"
-    model = load_retina_model(model_path)
+    model_path = Path(opt.out_dir) / "resnet" / name / "checkpoints" / "model_latest.pth"
+    model = load_small_retina_model(model_path)
     model = model.to(device)
 
-    val_dataset = HDF5EyePACS(train=False)
+    if opt.dataset == "eyepacs":
+        val_dataset = HDF5EyePACS(train=False)
+    elif opt.dataset == "test":
+        transform = T.Compose([T.Resize(512), T.ToTensor()])
+        val_dataset = GradingDataset(
+            image_transform=transform, mode=GradingDataset.TEST
+        )
+    elif opt.dataset == "val":
+        transform = T.Compose([T.Resize(512), T.ToTensor()])
+        val_dataset = GradingDataset(
+            image_transform=transform,
+            mode=GradingDataset.VALIDATION,
+        )
+    elif opt.dataset == "copypaste":
+        transform = T.Compose([T.Resize(512), T.ToTensor()])
+        val_dataset = CopyPasteDataset(image_transform=transform, return_label=False)
+    else:
+        transform = T.Compose([T.Resize(512), T.ToTensor()])
+        val_dataset = SyntheticDataset(
+            name=opt.dataset,
+            image_transform=transform,
+            return_inst=False,
+            return_image=False,
+            return_label=False,
+        )
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -58,7 +80,7 @@ def main():
     predictions = np.empty(n_val_samples, dtype=int)
     actual = np.empty(n_val_samples, dtype=int)
     for i, batch in enumerate(tqdm(val_loader)):
-        images, grades = batch["image"], batch["grade"]
+        images, grades = batch["transformed"], batch["grade"]
         images = images.to(device)
         grades = grades.to(device)
 

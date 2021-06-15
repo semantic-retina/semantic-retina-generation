@@ -2,6 +2,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from torch.nn import DataParallel
 from torchvision import models
 
 from src.models.resnet import set_parameter_requires_grad
@@ -18,7 +19,7 @@ def create_label_model(use_pretrained: bool, feature_extract: bool):
         9, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False
     )
 
-    return model
+    return DataParallel(model)
 
 
 def load_label_model(path: Path) -> nn.Module:
