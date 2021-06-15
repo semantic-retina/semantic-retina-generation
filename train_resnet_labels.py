@@ -126,12 +126,21 @@ def train(
             T.ToTensor(),
         ]
     )
-    train_dataset = CombinedDataset(label_transform=transform, return_image=False)
+    train_dataset = CombinedDataset(
+        label_transform=transform,
+        return_image=False,
+        return_inst=False,
+        return_transformed=False,
+        mode=CombinedDataset.TRAIN,
+    )
     train_dataset.df = train_dataset.df[train_dataset.df["Source"] == "FGADR"]
 
     if use_synthetic:
         synthetic_dataset = SyntheticDataset(
-            image_transform=transform, return_label=False, return_inst=False
+            label_transform=transform,
+            return_label=False,
+            return_inst=False,
+            return_transformed=False,
         )
         train_dataset = ConcatDataset((train_dataset, synthetic_dataset))
 
@@ -143,7 +152,12 @@ def train(
         shuffle=True,
     )
 
-    val_dataset = CombinedDataset(common_transform=transform)
+    val_dataset = CombinedDataset(
+        label_transform=transform,
+        return_image=False,
+        return_transformed=False,
+        mode=CombinedDataset.VALIDATION,
+    )
     val_dataset.df = val_dataset.df[val_dataset.df["Source"] == "FGADR"]
 
     val_loader = DataLoader(
@@ -181,7 +195,7 @@ def main():
     if opt.seed > 0:
         set_seed(opt.seed)
 
-    output_path = Path("results") / "resnet" / opt.name
+    output_path = Path("results") / "resnet_labels" / opt.name
     output_path.mkdir(parents=True, exist_ok=True)
 
     logger = ResNetLogger(opt.name, opt.n_epochs, opt.tensorboard)
