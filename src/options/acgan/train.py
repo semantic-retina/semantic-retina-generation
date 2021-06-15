@@ -62,7 +62,7 @@ def get_args():
     parser.add_argument(
         "--n_gen",
         type=int,
-        default=1,
+        default=2,
         help="Generator training iterations for each batch",
     )
     parser.add_argument(
@@ -70,6 +70,12 @@ def get_args():
         type=int,
         default=50,
         help="Interval between image samples, in terms of epochs",
+    )
+    parser.add_argument(
+        "--val_interval",
+        type=int,
+        default=50,
+        help="Interval between validation, in terms of epochs",
     )
     parser.add_argument(
         "--log_step",
@@ -83,6 +89,11 @@ def get_args():
         nargs="+",
         default=["RETINA", "OD", "MA", "HE", "EX", "SE", "NV", "IRMA"],
         help="Which lesions to generate, as specified by the `Labels` enum",
+    )
+    parser.add_argument(
+        "--filter_dataset",
+        type=str,
+        default="",
     )
     parser.add_argument(
         "--label_smoothing",

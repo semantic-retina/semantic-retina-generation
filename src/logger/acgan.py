@@ -32,6 +32,14 @@ class ACGANLogger:
 
         self.n_epochs = n_epochs
 
+    def log_val(self, step: int, fid: float):
+        if self.tensorboard is not None:
+            writer = self.tensorboard
+
+            writer.add_scalar("Accuracy/FID", fid, step)
+
+        print(f"FID: {fid}")
+
     def log(self, m: ACGANMetrics):
         if self.tensorboard is not None:
             writer = self.tensorboard

@@ -6,10 +6,12 @@ from typing import List
 import torch
 import torch.cuda
 import torchvision.transforms as transforms
+from pytorch_fid.fid_score import calculate_fid_given_paths
 from torch import nn
 from torch.nn import NLLLoss
 from torch.utils.data import ConcatDataset, DataLoader
 from torchvision.transforms import InterpolationMode
+from torchvision.utils import save_image
 
 from src.data.common import Labels, get_labels
 from src.data.datasets.combined import CombinedDataset
@@ -24,7 +26,7 @@ from src.options.acgan.train import get_args
 from src.transforms import probabilistic
 from src.transforms.discriminator import DiscriminatorTransform
 from src.utils.device import get_device
-from src.utils.sample import sample_gan
+from src.utils.sample import colour_labels, sample_gan
 from src.utils.seed import set_seed
 from src.utils.time import format_seconds
 
@@ -34,6 +36,37 @@ def save_models(generator, discriminator, output_chkpt_path, suffix):
     torch.save(
         discriminator.state_dict(), output_chkpt_path / f"discriminator_{suffix}.pth"
     )
+
+
+def validate(
+    output_path: Path,
+    generator: Generator,
+    latent_dim: int,
+    device: torch.device,
+):
+    # TODO: cleanup.
+    n_samples = 20
+    output_path /= "val"
+    output_path.mkdir(exist_ok=True, parents=True)
+    """Saves a grid of generated digits ranging from 0 to n_classes"""
+    # Sample noise for each image.
+    z = torch.randn((n_samples, latent_dim), device=device)
+    # Get labels ranging from 0 to n_classes for n_rows.
+    labels = torch.randint(0, 5, (n_samples,), device=device)
+    with torch.no_grad():
+        gen_imgs = generator(z, labels)
+
+    coloured_val = colour_labels(gen_imgs)
+
+    for i in range(coloured_val.shape[0]):
+        save_image(coloured_val[i, :, :, :], output_path / "{}.png".format(i))
+
+    input_path = Path("data") / "colour" / "fgadr" / "label"
+    paths = [str(input_path), str(output_path)]
+
+    fid_score = calculate_fid_given_paths(paths, n_samples, device, 2048)
+
+    return fid_score
 
 
 def train(
@@ -52,10 +85,12 @@ def train(
     latent_dim: int,
     n_classes: int,
     sample_interval: int,
+    val_interval: int,
     chkpt_interval: int,
     logger: ACGANLogger,
     log_step: int,
     lesions: List[str],
+    use_ada: bool,
 ):
     checkpoint_path = output_path / "checkpoints"
     checkpoint_path.mkdir(exist_ok=True, parents=True)
@@ -81,6 +116,8 @@ def train(
         ],
         max_p=0.85,
     )
+    if not use_ada:
+        d_transform = DiscriminatorTransform(0, [], max_p=0.0)
 
     hinge_loss = HingeLoss()
     wasserstein_loss = WassersteinLoss()
@@ -89,6 +126,8 @@ def train(
     valid_val = 1
     if label_smoothing:
         valid_val *= 0.9
+
+    step = 0
 
     which_labels = sorted([Labels[l] for l in lesions], key=lambda x: x.value)
     for epoch in range(n_epochs):
@@ -99,6 +138,8 @@ def train(
         D_G_z = 0.0
 
         for i, batch in enumerate(dataloader):
+            step += 1
+
             imgs = batch["label"]
             imgs = get_labels(which_labels, imgs)
             labels = batch["grade"]
@@ -107,8 +148,6 @@ def train(
             # and not accidentally a Tensor by calling `.item()`. Otherwise, issues will
             # arise from inadvertently storing intermediate results between epochs.
             ada_r = 0.0
-
-            step = epoch * len(dataloader) + i + 1
 
             batch_size = imgs.shape[0]
 
@@ -195,6 +234,10 @@ def train(
         if epoch % sample_interval == 0:
             sample_gan(image_path, generator, device, latent_dim, n_classes, epoch)
 
+        if epoch % val_interval == 0:
+            fid = validate(output_path, generator, latent_dim, device)
+            logger.log_val(step, fid)
+
         if epoch % chkpt_interval == 0:
             save_models(generator, discriminator, checkpoint_path, epoch)
 
@@ -237,13 +280,20 @@ def main():
         ],
     )
     dataset = CombinedDataset(
-        return_inst=False, return_image=False, label_transform=transform
+        return_inst=False,
+        return_image=False,
+        return_transformed=False,
+        return_filename=False,
+        label_transform=transform,
     )
+    if opt.filter_dataset:
+        dataset.df = dataset.df[dataset.df["Source"] == opt.filter_dataset]
+
     if opt.use_copypaste:
         synthetic_dataset = CopyPasteDataset(label_transform=transform)
         dataset = ConcatDataset((dataset, synthetic_dataset))
 
-    dataloader = torch.utils.data.DataLoader(
+    dataloader = DataLoader(
         dataset,
         batch_size=opt.batch_size,
         shuffle=True,
@@ -253,6 +303,8 @@ def main():
     logger = ACGANLogger(opt.name, opt.n_epochs, opt.tensorboard)
 
     start_time = time.time()
+
+    print(f"Train size: {len(dataset)}")
 
     train(
         generator,
@@ -270,10 +322,12 @@ def main():
         opt.latent_dim,
         n_classes,
         opt.sample_interval,
+        opt.val_interval,
         opt.chkpt_interval,
         logger,
         opt.log_step,
         opt.lesions,
+        opt.use_ada,
     )
 
     logger.close()
